@@ -19,3 +19,10 @@ def mag(v):
 	assert v.size==3 , 'Vector should have size=3'
 
 	return(np.sqrt(v[0]**2+v[1]**2+v[2]**2))
+
+# derivative in the Phi direction
+def dPhi(A):
+        # Temporary fix: pad A on both sides to use the numpy gradient function
+        # then remove the padded regions
+        Ap=np.hstack([A[:,-2:],A,A[:,:2]])
+        return(np.gradient(Ap)[1][:,2:-2])
