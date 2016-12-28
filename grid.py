@@ -6,6 +6,7 @@ class grid():
         self.p = None
         self.nt = None
         self.np = None
+        self.A = None    # area elements
 
 class uniform(grid):
     def __init__(self,nt,np):
@@ -18,6 +19,7 @@ class generate_from_data(grid):
     def __init__(self,data):
         self.t = data[0]
         self.p = data[1]
+        self.A = data[2]
         self.nt = data[1].shape[0]
         self.np = data[1].shape[1]
 
