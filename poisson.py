@@ -52,50 +52,12 @@ if __name__ == "__main__":
         A[K(Nt-1,j),K(Nt-1,j)] = 1.
         J[K(Nt-1,j)] = 0. # FIXME: make arbitrary BC
 
-    # # pole boundary
-    # for j in arange(0,Np):
-    #     jAm1 = (j-1)%Np
-    #     jAp1 = (j+1)%Np
-    #     jA = j
-
-    #     jm1 = (j-1)%(Np-1)
-    #     jp1  = (j+1)%(Np-1)
-    #     j      = j%(Np-1)
-
-    #     if j<=Np/4:
-    #         A[K(0,j),K(0,j)] = (1.-0.5*dp[0,j]*sin(amp_grid.p[0,j]))/dt[0,j]
-    #         A[K(0,j),K(1,j)] = -(1.-0.5*dp[0,j]*sin(amp_grid.p[0,j]))/dt[0,j]
-    #     elif Np/4<j and j<=Np/2-1:
-    #         A[K(0,j),K(0,j)] = (1.-0.5*dp[0,j]*(sin(amp_grid.p[0,j])-cos(amp_grid.p[0,j])))/dt[0,j]
-    #         A[K(0,j),K(1,j)] =-(1.-0.5*dp[0,j]*(sin(amp_grid.p[0,j])-cos(amp_grid.p[0,j])))/dt[0,j]
-    #     elif Np/2-1<j and j<=3*Np/4-1:
-    #         A[K(0,j),K(0,j)] = (1.+0.5*dp[0,j]*cos(amp_grid.p[0,j]))/dt[0,j]
-    #         A[K(0,j),K(1,j)] = -(1.+0.5*dp[0,j]*cos(amp_grid.p[0,j]))/dt[0,j]
-    #     else:
-    #         A[K(0,j),K(0,j)] = 1./dt[0,j]
-    #         A[K(0,j),K(1,j)] = -1./dt[0,j]
-        
-    #     for jj in arange(0,Np/4+1):
-    #         if jj != j:
-    #             A[K(0,j),K(0,jj)] = -0.5*dp[0,jj]*sin(amp_grid.p[0,j])/dt[0,jj]
-    #             A[K(0,j),K(1,jj)] = 0.5*dp[0,jj]*sin(amp_grid.p[0,j])/dt[0,jj]
-
-    #     for jj in arange(Np/4+1,Np/2):
-    #         if jj != j:
-    #             A[K(0,j),K(0,jj)] = 0.5*dp[0,jj]/dt[0,jj]*(cos(amp_grid.p[0,j])-sin(amp_grid.p[0,j]))
-    #             A[K(0,j),K(1,jj)] =-0.5*dp[0,jj]/dt[0,jj]*(cos(amp_grid.p[0,j])-sin(amp_grid.p[0,j]))
-
-    #     for jj in arange(Np/2,3*Np/4):
-    #         if jj != j:
-    #             A[K(0,j),K(0,jj)] = 0.5*dp[0,jj]*cos(amp_grid.p[0,j])/dt[0,jj]
-    #             A[K(0,j),K(1,jj)] =-0.5*dp[0,jj]*cos(amp_grid.p[0,j])/dt[0,jj]
-
-    #     J[K(0,j)] = 0.
-
+    # pole boundary
     for j in arange(0,Np):
         A[K(0,j),K(0,j)] = 1.
         for jj in arange(0,Np): 
             A[K(0,j),K(1,jj)] = -dp[1,jj%(Np-1)]/(2.*pi)
+        # note, not setting J because it's initializaed to zero anyway
 
     # Now, do the solve
     import scipy
