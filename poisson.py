@@ -36,6 +36,13 @@ if __name__ == "__main__":
     (Nt,Np) = grd.t.shape
     ############
 
+    # define conductance as uniform Pedersen for now
+    SigmaP = ones_like(jr)*Sigma_const
+    cosd     = -2.*cos(grd.t)/sqrt(1.+3.*cos(grd.t)**2)
+    F11          = sin(grd.t)*SigmaP/cosd**2
+    F22          = SigmaP
+
+
     K = lambda i,j: j*Nt+i
     A=zeros((Nt*Np,Nt*Np))
     J = zeros(Nt*Np)
@@ -43,24 +50,25 @@ if __name__ == "__main__":
     # inner block
     for i in arange(1,Nt-1):
         for j in arange(0,Np):
-            jAm1 = (j-1)%Np
-            jAp1 = (j+1)%Np
-            jA = j
+            jm1 = (j-1)%Np
+            jp1  = (j+1)%Np
+            j     = j%Np  # not needed (J<=Np-1) but do it for symmetry
 
-            jm1 = (j-1)%(Np-1)
-            jp1  = (j+1)%(Np-1)
-            j      = j%(Np-1)
+            # note, we use the above definitions of j's except in reference to dp array, which has Np-1 points
+            # in those cases, we take the modulo in place
 
-            ft = 2./(dt[i,j]+dt[i-1,j])
-            fp = 2./(dp[i,j]+dp[i,jm1])/sin(grd.t[i,j])**2
+            ft = 1./(dt[i,j]+dt[i-1,j])/sin(grd.t[i,j])
+            fp = 1./(dp[i,j%(Np-1)]+dp[i, (j-1)%(Np-1)])/sin(grd.t[i,j])**2
 
-            A[K(i,jA),K(i,jA)] = -ft*(1/dt[i,j]+1/dt[i-1,j]) - fp*(1/dp[i,j]+1/dp[i,jm1])  - 0.5*ft*(dt[i,j]/dt[i-1,j]-dt[i-1,j]/dt[i,j])/tan(grd.t[i,j])
-            A[K(i,jA),K(i+1,jA)] = ft*(1./dt[i,j]+0.5*dt[i-1,j]/dt[i,j]/tan(grd.t[i,j]))
-            A[K(i,jA),K(i-1,jA)] = ft*(1./dt[i-1,j]-0.5*dt[i,j]/dt[i-1,j]/tan(grd.t[i,j]))
-            A[K(i,jA),K(i,jAp1)] = fp/dp[i,j]
-            A[K(i,jA),K(i,jAm1)] = fp/dp[i,jm1]
+            A[K(i,j),K(i,j)] = -ft*( (F11[i,j]+F11[i+1,j])/dt[i,j]+(F11[i,j]+F11[i-1,j])/dt[i-1,j] ) - \
+                                 fp*( (F22[i,j]+F22[i,jp1])/dp[i,j%(Np-1)]+(F22[i,j]+F22[i,jm1])/dp[i, (j-1)%(Np-1)] )
+            A[K(i,j),K(i+1,j)] = ft*(F11[i,j]+F11[i+1,j])/dt[i,j]
+            A[K(i,j),K(i-1,j)] = ft*(F11[i,j]+F11[i-1,j])/dt[i-1,j]
+            A[K(i,j),K(i,jp1)] = fp*(F22[i,j]+F22[i,jp1])/dp[i, j%(Np-1)]
+            A[K(i,j),K(i,jm1)] = fp*(F22[i,j]+F22[i,jm1])/dp[i, (j-1)%(Np-1)]
 
-            J[K(i,jA)] = jr[i,j]
+            J[K(i,j)] = jr[i,j]
+
 
     # low lat boundary
     for j in arange(0,Np):
@@ -78,7 +86,7 @@ if __name__ == "__main__":
     import scipy
     from scipy.sparse import linalg
     pot,status=scipy.sparse.linalg.lgmres(A,J)
-    pot*=6.5**2*1.e3/Sigma_const
+    pot*=6.5**2*1.e3
 
     print "Convergence status: ", status
     print "Potential min/max (kV): ",pot.min(),pot.max()
