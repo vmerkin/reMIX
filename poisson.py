@@ -4,7 +4,7 @@ import numpy as np
 import sys
 import time
 import point,sphtrig
-from numpy import sin,cos,arccos,mat,dot,repeat,multiply,tan,pi,sqrt,append,linspace,meshgrid,zeros,arange,ones_like,array
+from numpy import sin,cos,arccos,mat,dot,repeat,multiply,tan,pi,sqrt,append,linspace,meshgrid,zeros,arange,ones_like,array,roll,hstack
 from matplotlib.pyplot import figure,subplot,pcolormesh,colorbar,contour,show,contourf,rgrids,ylim
 from scipy import interpolate
 import time
@@ -21,9 +21,20 @@ if __name__ == "__main__":
     if interp:
         ntheta = 100
         nphi = 720
-        f = interpolate.RectBivariateSpline(grd.t[:,0],grd.p[0,:],jr,kx=1,ky=1)
-        new_t = linspace(grd.t[:,0].min(),grd.t[:,0].max(),ntheta)
-        new_p = linspace(grd.p[0,:].min(),grd.p[0,:].max(),nphi)
+
+        # complete full circle with AMPERE data so that interpolated grid doesn't have a huge hole
+        # note, however, that we still perform the solve on a cell-centered grid, i.e., in the case of interpolation
+        # here we make sure that the resultant grid doesn't wrap around
+        p_tmp = hstack((grd.p,2.*pi+grd.p[:,[0]]))
+        t_tmp = hstack((grd.t,grd.t[:,[0]]))
+        jr_tmp = hstack((jr,jr[:,[0]]))
+
+        f = interpolate.RectBivariateSpline(grd.t[:,0],grd.p[0,:],jr,kx=1,ky=1)  # note, assume uniform ampere grid here
+        # this here defines cell vortices (and wraps around)
+        new_t = linspace(t_tmp.min(),t_tmp.max(),ntheta)
+        new_p = linspace(p_tmp.min(),p_tmp[0,:].max(),nphi+1)
+        # now redefine as cell centers
+        new_p = 0.5*(new_p[:-1]+new_p[1:])
         grd = grid.grid()
         grd.t,grd.p = meshgrid(new_t,new_p,indexing='ij')
         jr = f(grd.t[:,0],grd.p[0,:])
@@ -47,7 +58,7 @@ if __name__ == "__main__":
     A=zeros((Nt*Np,Nt*Np))    # we don't need this now that we went to the sparse matrix case, but keep it here for consistency for now
     from scipy.sparse import coo_matrix
 
-    J = zeros(Nt*Np)
+    Jr = zeros(Nt*Np)
 
     nnz = Np*(Nt-2)*5 + Np + Np*(Np+1) # this is the number of non-zeros in the matrix. Note, this depends on the stencil and boundary conditions
     data=zeros(nnz)
@@ -58,6 +69,7 @@ if __name__ == "__main__":
     # inner block
     for j in arange(0,Np):
         for i in arange(1,Nt-1):
+
             jm1 = (j-1)%Np
             jp1  = (j+1)%Np
             j     = j%Np  # not needed (J<=Np-1) but do it for symmetry
@@ -99,7 +111,7 @@ if __name__ == "__main__":
             JJ[count] = K(i,jm1)
             count+=1
 
-            J[K(i,j)] = jr[i,j]
+            Jr[K(i,j)] = jr[i,j]
 
     # low lat boundary
     for j in arange(0,Np):
@@ -109,7 +121,7 @@ if __name__ == "__main__":
         JJ[count] = K(Nt-1,j)
         count+=1
 
-        J[K(Nt-1,j)] = 0. # FIXME: make arbitrary BC
+        Jr[K(Nt-1,j)] = 0. # FIXME: make arbitrary BC
 
     # pole boundary
     for j in arange(0,Np):
@@ -134,11 +146,11 @@ if __name__ == "__main__":
     import scipy
     from scipy.sparse import linalg
     M = coo_matrix( (array(data),(array(II),array(JJ))),shape=(Np*Nt,Np*Nt) )
-    #    pot,status=scipy.sparse.linalg.lgmres(A,J)    # this becomes very slow for large matrices
+    #    pot,status=scipy.sparse.linalg.lgmres(A,Jr)    # this becomes very slow for large matrices
     #    solve=scipy.sparse.linalg.factorized(A)   # this is faster but still slow. need to use sparse matrix as implemented now
-    #    pot=solve(J)
+    #    pot=solve(Jr)
 
-    pot=scipy.sparse.linalg.spsolve(M.tocsc(),J)
+    pot=scipy.sparse.linalg.spsolve(M.tocsc(),Jr)
 
     t0=time.clock()
     print('Time spend on solve (s):',time.clock()-t0)
