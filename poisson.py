@@ -152,7 +152,6 @@ if __name__ == "__main__":
 
     pot=scipy.sparse.linalg.spsolve(M.tocsc(),Jr)
 
-    t0=time.clock()
     print('Time spend on solve (s):',time.clock()-t0)
 
     pot*=6.5**2*1.e3
