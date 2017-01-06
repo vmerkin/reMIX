@@ -11,7 +11,7 @@ import time
 
 if __name__ == "__main__":
     Sigma_const = 8. # scalar for the time being
-    interp = True
+    interp = False
 
     # AMPERE stuff
     amp = ampere_pole.ampere_pole('data/AMPERE_north_2015-08-15T20-50-00Z.txt')
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     F22          = SigmaP
 
 
-    K = lambda i,j: j*Nt+i
+    K = lambda i,j: i*Np+j
     A=zeros((Nt*Np,Nt*Np))    # we don't need this now that we went to the sparse matrix case, but keep it here for consistency for now
     from scipy.sparse import coo_matrix
 
@@ -67,8 +67,8 @@ if __name__ == "__main__":
     count = 0
     t0=time.clock()
     # inner block
-    for j in arange(0,Np):
-        for i in arange(1,Nt-1):
+    for i in arange(1,Nt-1):
+        for j in arange(0,Np):
 
             jm1 = (j-1)%Np
             jp1  = (j+1)%Np
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     lbls = [str(elem)+u'\xb0' for elem in [10,20,30,40]] 
     lines, labels = rgrids(circles,lbls)
     ylim(0,50.*pi/180.)
-    contourf(grd.p+pi+pi/2,grd.t,pot.reshape(Np,Nt).T,51)
+    contourf(grd.p+pi+pi/2,grd.t,pot.reshape(Nt,Np),51)
     colorbar().set_label('Potential, kV')
 
     figure() 
@@ -179,6 +179,6 @@ if __name__ == "__main__":
     ylim(0,50.*pi/180.)
     contourf(grd.p+pi+pi/2,grd.t,jr,45)
     colorbar().set_label('Current, microA/m^2')
-    contour(grd.p+pi+pi/2,grd.t,pot.reshape(Np,Nt).T,13,colors='black')
+    contour(grd.p+pi+pi/2,grd.t,pot.reshape(Nt,Np),13,colors='black')
     
 
