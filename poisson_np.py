@@ -60,8 +60,6 @@ if __name__ == "__main__":
     F11          = sin(grd.t)*SigmaP/cosd**2
     F22          = SigmaP
 
-    Jr = zeros(Nt*Np)
-
     t0=time.clock()
 
     # Clean, elegant and pythonic
