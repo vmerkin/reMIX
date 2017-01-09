@@ -216,14 +216,18 @@ class solver():
         Nt = self.Nt
         
         M = coo_matrix( (self.data,(self.I,self.J)),shape=(Np*Nt,Np*Nt) )
-        #    pot,status=scipy.sparse.linalg.lgmres(M,Jr)    # this becomes very slow for large matrices, need to precondition?
-        #    print "Convergence status: ", status
+        pot=scipy.sparse.linalg.spsolve(M.tocsc(),self.RHS)
+        return (pot*RIkm**2*1.e-3)  # assume current was in microA/m^2
 
         #    solve=scipy.sparse.linalg.factorized(M)   # this is similar to above
         #    pot=solve(Jr)
 
-        pot=scipy.sparse.linalg.spsolve(M.tocsc(),self.RHS)
-        return (pot*RIkm**2*1.e-3)  # assume current was in microA/m^2
+        # this does an iterative gmres solve and shows how to precondition
+#        M_inverse=scipy.sparse.linalg.splu(M)
+#        M1 = linalg.LinearOperator((Np*Nt,Np*Nt),M_inverse.solve)
+#        pot1,status=scipy.sparse.linalg.lgmres(M.tocsc(),self.RHS,M=M1)
+#        print "Convergence status: ", status
+#        return (pot*RIkm**2*1.e-3,pot1*RIkm**2*1.e-3)  # assume current was in microA/m^2
 
 
     
