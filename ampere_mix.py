@@ -25,7 +25,6 @@ if __name__ == "__main__":
         # here we make sure that the resultant grid doesn't wrap around
         p_tmp = hstack((grd.p,2.*pi+grd.p[:,[0]]))
         t_tmp = hstack((grd.t,grd.t[:,[0]]))
-        jr_tmp = hstack((jr,jr[:,[0]]))
 
         f = interpolate.RectBivariateSpline(grd.t[:,0],grd.p[0,:],jr,kx=1,ky=1)  # note, assume uniform ampere grid here
         # this here defines cell vortices (and wraps around)
