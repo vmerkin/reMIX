@@ -48,20 +48,21 @@ class solver():
         dp = self.dp
         F11 = self.F11
         F22 = self.F22
+        G   = self.G
         grd = self.grd
 
         ############ inner block ############
         (I,J) = self._defineInnerBlock(Nt,Np)
 
         ft = 1./(dt[I,:]+dt[I-1,:])/sin(grd.t[I,:])
-        fp = 1./(dp[I,:]+roll(dp[I,:],1,axis=1))/sin(grd.t[I,:])**2
+        fp = 1./(dp[I,:]+roll(dp[I,:],1,axis=1))
 
         ijij   = -ft*( (F11[I,:]+F11[I+1,:])/dt[I,:]+(F11[I,:]+F11[I-1,:])/dt[I-1,:] ) - \
-                 fp*( (F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]+(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) )
+                 fp/sin(grd.t[I,:])**2*( (F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]+(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) )
         ijip1j = ft*(F11[I,:]+F11[I+1,:])/dt[I,:] 
         ijim1j = ft*(F11[I,:]+F11[I-1,:])/dt[I-1,:]
-        ijijp1 = fp*(F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]
-        ijijm1 = fp*(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) 
+        ijijp1 = fp/sin(grd.t[I,:])**2*(F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]
+        ijijm1 = fp/sin(grd.t[I,:])**2*(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) 
     
         Kij   = K(I,J)
         Kip1j = K(I+1,J)
