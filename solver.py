@@ -1,4 +1,4 @@
-from numpy import sin,cos,arccos,mat,dot,repeat,multiply,tan,pi,sqrt,append,linspace,meshgrid,zeros,arange,ones_like,array,roll,hstack,newaxis,isscalar,ones,vstack
+from numpy import sin,cos,arccos,mat,dot,repeat,multiply,tan,pi,sqrt,append,linspace,meshgrid,zeros,arange,ones_like,array,roll,hstack,newaxis,isscalar,ones,vstack,zeros_like
 import scipy
 from scipy import interpolate
 from scipy.sparse import linalg
@@ -56,13 +56,23 @@ class solver():
 
         ft = 1./(dt[I,:]+dt[I-1,:])/sin(grd.t[I,:])
         fp = 1./(dp[I,:]+roll(dp[I,:],1,axis=1))
+        dtdt = dt[I,:]/dt[I-1,:]-dt[I-1,:]/dt[I,:]
+        dpdp = dp[I,:]/roll(dp[I,:],1,axis=1)-roll(dp[I,:],1,axis=1)/dp[I,:]
+        dGp  = fp*( roll(dp[I,:],1,axis=1)/dp[I,:]*roll(G[I,:],-1,axis=1) + 
+                    dpdp*G[I,:] - dp[I,:]/roll(dp[I,:],1,axis=1)*roll(G[I,:],1,axis=1) )
+        dGt  = ft*( dt[I-1,:]/dt[I,:]*G[I+1,:] + dtdt*G[I,:] - dt[I,:]/dt[I-1,:]*G[I-1,:] )
 
         ijij   = -ft*( (F11[I,:]+F11[I+1,:])/dt[I,:]+(F11[I,:]+F11[I-1,:])/dt[I-1,:] ) - \
-                 fp/sin(grd.t[I,:])**2*( (F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]+(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) )
-        ijip1j = ft*(F11[I,:]+F11[I+1,:])/dt[I,:] 
-        ijim1j = ft*(F11[I,:]+F11[I-1,:])/dt[I-1,:]
-        ijijp1 = fp/sin(grd.t[I,:])**2*(F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]
-        ijijm1 = fp/sin(grd.t[I,:])**2*(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) 
+                 fp/sin(grd.t[I,:])**2*( (F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]+(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1) )+\
+                 dGt*fp*dpdp-dGp*ft*dtdt
+        ijip1j = ft*(F11[I,:]+F11[I+1,:])/dt[I,:]-\
+                 dGp*ft*dt[I-1,:]/dt[I,:]
+        ijim1j = ft*(F11[I,:]+F11[I-1,:])/dt[I-1,:]+\
+                 dGp*ft*dt[I,:]/dt[I-1,:]
+        ijijp1 = fp/sin(grd.t[I,:])**2*(F22[I,:]+roll(F22[I,:],-1,axis=1))/dp[I,:]+\
+                 dGt*fp*roll(dp[I,:],1,axis=1)/dp[I,:]
+        ijijm1 = fp/sin(grd.t[I,:])**2*(F22[I,:]+roll(F22[I,:],1,axis=1))/roll(dp[I,:],1,axis=1)-\
+                 dGt*fp*dp[I,:]/roll(dp[I,:],1,axis=1)
     
         Kij   = K(I,J)
         Kip1j = K(I+1,J)
