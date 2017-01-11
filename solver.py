@@ -37,8 +37,7 @@ class solver():
     def setTerms(self,SigmaP,SigmaH):
         self.F11 = sin(self.grd.t)*SigmaP/self.cosd**2
         self.F22 = SigmaP
-        self.F12 = -SigmaH/self.cosd
-        self.F21 = -self.F12
+        self.G = -SigmaH/self.cosd # (assuming F12=G, F21=-G)
         
     def setStencilMatrixNp(self):
         # some aliases for brevity
@@ -136,17 +135,18 @@ class solver():
         dp = self.dp
         F11 = self.F11
         F22 = self.F22
-        F12 = self.F12
-        F21 = self.F21
+        G   = self.G
         grd = self.grd
 
         ft = lambda i,j: 1./(dt[i,j]+dt[i-1,j])/sin(grd.t[i,j])
         fp = lambda i,j: 1./(dp[i,j%(Np-1)]+dp[i, (j-1)%(Np-1)])
         dtdt = lambda i,j: dt[i,j]/dt[i-1,j]-dt[i-1,j]/dt[i,j]
         dpdp = lambda i,j: dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]-dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]
+        dGp  = lambda i,j: fp(i,j)*( dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]*G[i,(j+1)%Np] + dpdp(i,j)*G[i,j] - dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]*G[i,(j-1)%Np] )
+        dGt  = lambda i,j: ft(i,j)*( dt[i-1,j]/dt[i,j]*G[i+1,j] + dtdt(i,j)*G[i,j] - dt[i,j]/dt[i-1,j]*G[i-1,j] )
 
         RHS = zeros(Nt*Np)
-        nnz = Np*(Nt-2)*9 + Np + Np*(Np+1) # this is the number of non-zeros in the matrix. Note, this depends on the stencil and boundary conditions
+        nnz = Np*(Nt-2)*5 + Np + Np*(Np+1) # this is the number of non-zeros in the matrix. Note, this depends on the stencil and boundary conditions
         data=zeros(nnz)
         II = zeros(nnz)
         JJ = zeros(nnz)
@@ -163,63 +163,34 @@ class solver():
 
                 data[count] = -ft(i,j)*( (F11[i,j]+F11[i+1,j])/dt[i,j]+(F11[i,j]+F11[i-1,j])/dt[i-1,j] ) - \
                               fp(i,j)/sin(grd.t[i,j])**2*( (F22[i,j]+F22[i,jp1])/dp[i,j%(Np-1)]+(F22[i,j]+F22[i,jm1])/dp[i, (j-1)%(Np-1)] ) +\
-                              ft(i,j)*dtdt(i,j)*fp(i,j)*dpdp(i,j)*F12[i,j]+\
-                              fp(i,j)*dpdp(i,j)*ft(i,j)*dtdt(i,j)*F21[i,j]
+                              dGt(i,j)*fp(i,j)*dpdp(i,j)-\
+                              dGp(i,j)*ft(i,j)*dtdt(i,j) 
                 II[count] = K(i,j)
                 JJ[count] = K(i,j)
                 count+=1
                 
-                data[count] = ft(i,j)*(F11[i,j]+F11[i+1,j])/dt[i,j]+\
-                              ft(i,j)*dt[i-1,j]/dt[i,j]*fp(i+1,j)*dpdp(i+1,j)*F12[i+1,j]+\
-                              fp(i,j)*dpdp(i,j)*ft(i,j)*dt[i-1,j]/dt[i,j]*F21[i,j]
+                data[count] = ft(i,j)*(F11[i,j]+F11[i+1,j])/dt[i,j]-\
+                              dGp(i,j)*ft(i,j)*dt[i-1,j]/dt[i,j]
                 II[count]  = K(i,j)
-                JJ[count] = K(i+1,j)
+                JJ[count]  = K(i+1,j)
                 count+=1
 
-                data[count] = ft(i,j)*(F11[i,j]+F11[i-1,j])/dt[i-1,j]-\
-                              ft(i,j)*dt[i,j]/dt[i-1,j]*fp(i-1,j)*dpdp(i-1,j)*F12[i-1,j]-\
-                              fp(i,j)*dpdp(i,j)*ft(i,j)*dt[i,j]/dt[i-1,j]*F21[i,j]
+                data[count] = ft(i,j)*(F11[i,j]+F11[i-1,j])/dt[i-1,j]+\
+                              dGp(i,j)*ft(i,j)*dt[i,j]/dt[i-1,j]
                 II [count] = K(i,j)
                 JJ[count]  = K(i-1,j)
                 count+=1
 
                 data[count] = fp(i,j)/sin(grd.t[i,j])**2*(F22[i,j]+F22[i,jp1])/dp[i, j%(Np-1)]+\
-                              ft(i,j)*dtdt(i,j)*fp(i,j)*dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]*F12[i,j]+\
-                              fp(i,j)*dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]*ft(i,jp1)*dtdt(i,jp1)*F21[i,jp1]
+                              dGt(i,j)*fp(i,j)*dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]
                 II[count] = K(i,j)
                 JJ[count] = K(i,jp1)
                 count+=1
 
                 data[count] = fp(i,j)/sin(grd.t[i,j])**2*(F22[i,j]+F22[i,jm1])/dp[i, (j-1)%(Np-1)]-\
-                              ft(i,j)*dtdt(i,j)*fp(i,j)*dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]*F12[i,j]-\
-                              fp(i,j)*dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]*ft(i,jm1)*dtdt(i,jm1)*F21[i,jm1]
-                                                                          
+                              dGt(i,j)*fp(i,j)*dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]
                 II[count] = K(i,j)
                 JJ[count] = K(i,jm1)
-                count+=1
-
-                data[count] = ft(i,j)*dt[i,j]/dt[i-1,j]*fp(i-1,j)*dp[i-1,j%(Np-1)]/dp[i-1,(j-1)%(Np-1)]*F12[i-1,j]+\
-                              fp(i,j)*dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]*ft(i,jm1)*dt[i,jm1]/dt[i-1,jm1]*F21[i,jm1]
-                II[count] = K(i,j)
-                JJ[count] = K(i-1,jm1)
-                count+=1
-
-                data[count] = -ft(i,j)*dt[i,j]/dt[i-1,j]*fp(i+1,j)*dp[i+1,(j-1)%(Np-1)]/dp[i+1,j%(Np-1)]*F12[i+1,j]-\
-                              fp(i,j)*dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]*ft(i,jp1)*dt[i,jp1]/dt[i-1,jp1]*F21[i,jp1]
-                II[count] = K(i,j)
-                JJ[count] = K(i-1,jp1)
-                count+=1
-
-                data[count] = -ft(i,j)*dt[i-1,j]/dt[i,j]*fp(i+1,j)*dp[i+1,j%(Np-1)]/dp[i+1,(j-1)%(Np-1)]*F12[i+1,j]-\
-                              fp(i,j)*dp[i,j%(Np-1)]/dp[i,(j-1)%(Np-1)]*ft(i,jm1)*dt[i-1,jm1]/dt[i,jm1]*F21[i,jm1]
-                II[count] = K(i,j)
-                JJ[count] = K(i+1,jm1)
-                count+=1
-
-                data[count] = ft(i,j)*dt[i-1,j]/dt[i,j]*fp(i+1,j)*dp[i+1,(j-1)%(Np-1)]/dp[i+1,j%(Np-1)]*F12[i+1,j]+\
-                              fp(i,j)*dp[i,(j-1)%(Np-1)]/dp[i,j%(Np-1)]*ft(i,jp1)*dt[i-1,jp1]/dt[i,jp1]*F21[i,jp1]
-                II[count] = K(i,j)
-                JJ[count] = K(i+1,jp1)
                 count+=1
 
                 RHS[K(i,j)] = S[i,j]
