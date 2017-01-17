@@ -15,11 +15,16 @@ FFLAGS += $(INCLUDES) $(LIBS)
 .f90.o:
 	$(F90) $(FFLAGS) -c $<
 
+.F90.o:
+	$(F90) $(FFLAGS) -c $<
+
 EXE = mix
 
 objects = mixdefs.o\
 	mixio.o\
 	mixtypes.o\
+	mixgeom.o\
+	mixsolver.o\
 	mix.o
 
 $(EXE): $(objects)
