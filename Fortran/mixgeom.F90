@@ -5,9 +5,26 @@ module mixgeom
   implicit none
   
   contains
-    
+    subroutine init_grid_fromXY(G,x,y)
+      type(Grid_T),intent(inout) :: G
+      real(mix_real), dimension(:,:), intent(in) :: x,y
+      integer, dimension(2) :: dims
+
+      ! set grid size
+      dims = shape(x); G%Nt = dims(1); G%Np = dims(2)
+
+      allocate(G%x(G%Nt,G%Np))
+      allocate(G%y(G%Nt,G%Np))
+
+      G%x = x
+      G%y = y
+    end subroutine init_grid_fromXY
+
     subroutine set_grid(G)
       type(Grid_T),intent(inout) :: G
+
+      allocate(G%t(G%Nt,G%Np))
+      allocate(G%p(G%Nt,G%Np))
 
       ! note allocating everything with the same size
       ! careful with unused points
@@ -21,11 +38,19 @@ module mixgeom
       allocate(G%dtdt(G%Nt,G%Np))
       allocate(G%dpdp(G%Nt,G%Np))
 
+      ! define spherical angular coordinates
+      G%t = asin(sqrt(G%x**2+G%y**2))
+      G%p = modulo((atan2(G%y,G%x)+2*mix_pi),(2*mix_pi)) ! note, this mangles phi at theta=0, 
+      ! but we don't care because the coordinates of that point are never used
+
+
+
       ! note, keep explicit size on the LHS to avoid compiler-dependent
       ! problems down the road
-      G%dp(:,1:G%Np-1) = G%p(:,2:G%Np)-G%p(:,1:G%Np-1)
-      G%dp(:,G%Np) = mod(G%p(:,1)-G%p(:,G%Np),2*mix_pi)      ! fix up periodic
       G%dt(1:G%Nt-1,:) = G%t(2:G%Nt,:)-G%t(1:G%Nt-1,:)  
+      G%dp(:,1:G%Np-1) = G%p(:,2:G%Np)-G%p(:,1:G%Np-1)
+      G%dp(:,G%Np) = modulo(G%p(:,1)-G%p(:,G%Np),2*mix_pi)      ! fix up periodic
+
 
       ! note, unlike dp and dt above that are edge-centered, the things
       ! below are vortex centered; we just don't define them on the ends
