@@ -45,7 +45,7 @@ program MIX
   G0%y = y_in
   ! define spherical angular coordinates
   G0%t = asin(sqrt(G0%x**2+G0%y**2))
-  G0%p = mod((atan2(G0%y,G0%x)+2*pi),(2.*pi)) ! note, this mangles phi at theta=0, 
+  G0%p = mod((atan2(G0%y,G0%x)+2*mix_pi),(2*mix_pi)) ! note, this mangles phi at theta=0, 
   !but we don't care because the coordinates of that point are never used
 
   S0%V(:,:,POT) = pot_in
@@ -57,5 +57,6 @@ program MIX
   ! now can do the solve
   call set_grid(G0)
   call solver_init(P0,G0,S0)
+  print *,G0%dp
   call h5close_f(herror)  ! Close H5 Fortran interface
 end program MIX

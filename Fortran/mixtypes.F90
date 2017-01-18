@@ -16,6 +16,8 @@ module mixtypes
      
      real(mix_real), dimension(:,:), allocatable :: x,y,t,p
      real(mix_real), dimension(:,:), allocatable :: dt,dp
+     real(mix_real), dimension(:,:), allocatable :: ft,fp
+     real(mix_real), dimension(:,:), allocatable :: dtdt,dpdp
   end type Grid_T
 
 end module mixtypes

@@ -12,7 +12,7 @@ module mixdefs
 
   integer, parameter :: strLen = 100 !Default size for strings
 
-  real (mix_real), parameter :: pi = 4.0D0*atan(1.0D0)
+  real (mix_real), parameter :: mix_pi = 4.0D0*atan(1.0D0)
 
   integer, parameter :: nVars = 4 ! change together wiht the enumerator below
   enum, bind(C)
