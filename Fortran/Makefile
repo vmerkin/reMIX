@@ -1,6 +1,6 @@
 F90 = h5fc
 #ifort
-FFLAGS += -O3  
+FFLAGS += -O3 -check bounds
 #-fast 
 #-qopenmp
 

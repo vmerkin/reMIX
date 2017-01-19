@@ -15,12 +15,14 @@ program MIX
   integer, dimension(6) :: simtime
   integer, dimension(2) :: dims
   integer :: Nt,Np
+  integer :: u
   real(mix_io_real), dimension(:,:), allocatable :: x_in,y_in,&
       pot_in,j_in,sigmap_in,sigmah_in
   type(Grid_T) :: Grid
   type(State_T) :: State
   type(Params_T) :: Params  ! to be read from xml file, placeholder for now
   type(Solver_T) :: Solver
+  real(mix_real),dimension(:),allocatable :: LLBC ! low latitude boundary condition
 
   call h5open_f(herror) !Setup H5 Fortran interface
 
@@ -34,8 +36,6 @@ program MIX
   call getVar(fname,"FAC North [microAm2]",j_in)
   call getVar(fname,"Pedersen conductance North [S]",sigmap_in)
   call getVar(fname,"Hall conductance North [S]",sigmah_in)
-
-
 
   ! initiate and set grid variables
   ! note, casting the arrays into whatever was defined as mix_real type (double by default)
@@ -54,6 +54,27 @@ program MIX
   ! ok, done with the setup of the main data structures.
   ! now can do the solve
   call init_solver(Params,Grid,State,Solver)
+
+  ! FIXME: low latitude boundary condition
+  allocate(LLBC(Grid%Np))
+  LLBC = 0.0_mix_real
+
+  ! MAIN LOOP WILL START HERE
+  call set_solver_terms(Params,Grid,State,Solver)
+  call set_solver_matrix_and_rhs(Params,Grid,State,Solver,LLBC)
+
+  open(newunit=u, file="data.dat", status="replace")
+  write(u, *) Solver%data
+  close(u)
+  open(newunit=u, file="II.dat", status="replace")  
+  write(u, *) Solver%II
+  close(u)
+  open(newunit=u, file="JJ.dat", status="replace")
+  write(u, *) Solver%JJ
+  close(u)
+  open(newunit=u, file="RHS.dat", status="replace")  
+  write(u, *) Solver%RHS
+  close(u)
 
   call h5close_f(herror)  ! Close H5 Fortran interface
 end program MIX

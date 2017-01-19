@@ -51,6 +51,8 @@ module mixgeom
       ! need it, since pole coordinates are never used
       G%p(1,:)=G%p(2,:)
 
+      ! FIXME: use fortran shift/merge functions to treat periodic boundaries
+
       ! note, keep explicit size on the LHS to avoid compiler-dependent
       ! problems down the road
       G%dt(1:G%Nt-1,:) = G%t(2:G%Nt,:)-G%t(1:G%Nt-1,:)  

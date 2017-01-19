@@ -22,7 +22,9 @@ module mixtypes
   end type Grid_T
 
   type Solver_T
-     real(mix_real), dimension(:), allocatable :: RHS,data,II,JJ
+     real(mix_real), dimension(:), allocatable :: RHS,data
+     integer(kind=8),dimension(:), allocatable :: II,JJ
+     real(mix_real), dimension(:,:), allocatable :: F11,F22,F12 ! (assuming F21=-F12)
      integer :: nnz  ! number of non-zeros
   end type Solver_T
 end module mixtypes
