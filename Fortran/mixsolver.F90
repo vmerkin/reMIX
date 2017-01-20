@@ -1,8 +1,18 @@
 ! sets up and solves the stencil matrix
+#ifdef pardiso
+  include 'mkl_pardiso.f90'
+#elif dss
+  include 'mkl_dss.f90'
+#endif
 
 module mixsolver
   use mixdefs
   use mixtypes
+#ifdef pardiso
+  use mkl_pardiso
+#elif dss
+  use mkl_dss
+#endif
 
   implicit none
 
@@ -20,10 +30,30 @@ module mixsolver
       type(Solver_T), intent(inout) :: S
       integer :: i,j
 
+      TYPE(MKL_DSS_HANDLE) :: handle ! Allocate storage for the solver handle.
+      INTEGER :: error
+
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! INITIAL STUFF FOR SOLVER
+      ! ! Initialize the solver.
+      ! error = DSS_CREATE( handle, MKL_DSS_DEFAULTS )
+      ! if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
+
+      ! ! Define the non-zero structure of the matrix.
+      ! error = DSS_DEFINE_STRUCTURE( handle, MKL_DSS_NON_SYMMETRIC, rowIndex, nRows, &
+      !      & nCols, columns, nNonZeros )
+      ! IF (error /= MKL_DSS_SUCCESS) GOTO 999
+
+
+      ! ! Deallocate solver storage and various local arrays.
+      ! error = DSS_DELETE( handle, MKL_DSS_DEFAULTS )
+      ! if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
+      ! INITIAL STUFF FOR SOLVER
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
       ! this is the number of non-zeros in the matrix. Note, this
       ! depends on the stencil and boundary conditions
       S%nnz = G%Np*(G%Nt-2)*5 + G%Np + G%Np*(G%Np+1) 
-      print *,S%nnz
 
       ! allocate RHS vector
       allocate(S%RHS(G%Nt*G%Np))
@@ -83,6 +113,8 @@ module mixsolver
             S%JJ(count) = K(2,jj,G%Nt)
             count=count+1
          enddo
+
+
          ! note, not setting RHS because it's initializaed to zero anyway
          ! end pole boundary
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!

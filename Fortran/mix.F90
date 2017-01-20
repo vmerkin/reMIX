@@ -1,8 +1,4 @@
-include 'mkl_pardiso.f90'
-
 program MIX
-  use mkl_pardiso
-  
   use mixdefs
   use mixio
   use mixtypes
@@ -63,18 +59,18 @@ program MIX
   call set_solver_terms(Params,Grid,State,Solver)
   call set_solver_matrix_and_rhs(Params,Grid,State,Solver,LLBC)
 
-  open(newunit=u, file="data.dat", status="replace")
-  write(u, *) Solver%data
-  close(u)
-  open(newunit=u, file="II.dat", status="replace")  
-  write(u, *) Solver%II
-  close(u)
-  open(newunit=u, file="JJ.dat", status="replace")
-  write(u, *) Solver%JJ
-  close(u)
-  open(newunit=u, file="RHS.dat", status="replace")  
-  write(u, *) Solver%RHS
-  close(u)
+  ! open(newunit=u, file="data.dat", status="replace")
+  ! write(u, *) Solver%data
+  ! close(u)
+  ! open(newunit=u, file="II.dat", status="replace")  
+  ! write(u, *) Solver%II
+  ! close(u)
+  ! open(newunit=u, file="JJ.dat", status="replace")
+  ! write(u, *) Solver%JJ
+  ! close(u)
+  ! open(newunit=u, file="RHS.dat", status="replace")  
+  ! write(u, *) Solver%RHS
+  ! close(u)
 
   call h5close_f(herror)  ! Close H5 Fortran interface
 end program MIX

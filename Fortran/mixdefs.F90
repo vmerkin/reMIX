@@ -6,8 +6,12 @@ module mixdefs
   !Define variable precisions
   integer, parameter :: mix_single = kind(1.0)
   integer, parameter :: mix_double = kind(1.0D0)
-  
+
+#ifdef double_precision
   integer, parameter :: mix_real = mix_double
+#else
+  integer, parameter :: mix_real = mix_single
+#endif
   integer, parameter :: mix_io_real  = mix_single !Precision for IO
   
   integer, parameter :: strLen = 100 !Default size for strings

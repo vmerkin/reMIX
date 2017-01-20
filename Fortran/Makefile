@@ -1,12 +1,12 @@
 F90 = h5fc
 #ifort
-FFLAGS += -O3 -check bounds
+FFLAGS += -O3 -check bounds -Ddouble_precision -Ddss
+#-Dpardiso
 #-fast 
 #-qopenmp
 
 INCLUDES = -I$(MKLROOT)/include 
-#LIBS = 
-#$(MKLROOT)/lib  # not sure if anything needs to be included
+LIBS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 FFLAGS += $(INCLUDES) $(LIBS)
 
