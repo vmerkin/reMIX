@@ -1,6 +1,6 @@
 F90 = h5fc
 #ifort
-FFLAGS += -O3 -check bounds -Ddouble_precision -Ddss
+FFLAGS += -O3 -check bounds -traceback -Ddouble_precision -Ddss
 #-Dpardiso
 #-fast 
 #-qopenmp

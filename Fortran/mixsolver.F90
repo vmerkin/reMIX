@@ -18,9 +18,9 @@ module mixsolver
 
   contains
     ! running index
-    integer(kind=8) function K(i,j,Ni)
-      integer, intent(in) :: i,j,Ni
-      K=(j-1)*Ni+i
+    integer(kind=8) function K(j,i,Nj)
+      integer, intent(in) :: i,j,Nj
+      K=(i-1)*Nj+j
     end function K
 
     subroutine init_solver(P,G,St,S)
@@ -62,9 +62,9 @@ module mixsolver
       allocate(S%II(S%nnz))
       allocate(S%JJ(S%nnz))
       ! Equation terms
-      allocate(S%F11(G%Nt,G%Np))
-      allocate(S%F22(G%Nt,G%Np))
-      allocate(S%F12(G%Nt,G%Np))
+      allocate(S%F11(G%Np,G%Nt))
+      allocate(S%F22(G%Np,G%Nt))
+      allocate(S%F12(G%Np,G%Nt))
     end subroutine init_solver
 
     subroutine set_solver_terms(P,G,St,S)
@@ -96,81 +96,83 @@ module mixsolver
       S%JJ = 0.0_mix_real
       
       count=1
-      do j=1,G%Np
-         jm1 = merge(G%Np,j-1,j.eq.1)   ! maps j-1=0 to j-1=Np, otherwise returns j-1
-         jp1 = merge(1,j+1,j.eq.G%Np)   ! similar for j+1
 
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         ! Pole boundary 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! Pole boundary 
+      do j=1,G%Np
          S%data(count) = 1.0_mix_real
-         S%II(count)   = K(1,j,G%Nt)
-         S%JJ(count)   = K(1,j,G%Nt)
+         S%II(count)   = K(j,1,G%Np)
+         S%JJ(count)   = K(j,1,G%Np)
          count=count+1
 
-         do jj=1,G%Np
-            S%data(count) = -G%dp(2,jj)/(2*mix_pi)
-            S%II(count) = K(1,j,G%Nt)
-            S%JJ(count) = K(2,jj,G%Nt)
+         do jj=1,G%Np   ! with (Np,Nt) definition of the grid, this is a natural alignment
+            S%data(count) = -G%dp(jj,2)/(2*mix_pi)
+            S%II(count) = K(j,1,G%Np)
+            S%JJ(count) = K(jj,2,G%Np)
             count=count+1
          enddo
-
-
          ! note, not setting RHS because it's initializaed to zero anyway
          ! end pole boundary
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      enddo
 
-         do i=2,G%Nt-1  ! excluding pole and low lat boundaries
+      do i=2,G%Nt-1  ! excluding pole and low lat boundaries
+         do j=1,G%Np
+            jm1 = merge(G%Np,j-1,j.eq.1)   ! maps j-1=0 to j-1=Np, otherwise returns j-1
+            jp1 = merge(1,j+1,j.eq.G%Np)   ! similar for j+1
+
             ! derivatives for off diagonal conductance terms
-            dF12p = G%fp(i,j)*( G%dp(i,jm1)/G%dp(i,j)*S%F12(i,jp1) + G%dpdp(i,j)*S%F12(i,j) - G%dp(i,j)/G%dp(i,jm1)*S%F12(i,jm1) )
-            dF12t = G%ft(i,j)*( G%dt(i-1,j)/G%dt(i,j)*S%F12(i+1,j) + G%dtdt(i,j)*S%F12(i,j) - G%dt(i,j)/G%dt(i-1,j)*S%F12(i-1,j) )
+            dF12p = G%fp(j,i)*( G%dp(jm1,i)/G%dp(j,i)*S%F12(jp1,i) + G%dpdp(j,i)*S%F12(j,i) - G%dp(j,i)/G%dp(jm1,i)*S%F12(jm1,i) )
+            dF12t = G%ft(j,i)*( G%dt(j,i-1)/G%dt(j,i)*S%F12(j,i+1) + G%dtdt(j,i)*S%F12(j,i) - G%dt(j,i)/G%dt(j,i-1)*S%F12(j,i-1) )
 
-            S%data(count) = -G%ft(i,j)*( (S%F11(i,j)+S%F11(i+1,j))/G%dt(i,j)+(S%F11(i,j)+S%F11(i-1,j))/G%dt(i-1,j) ) - &
-                 G%fp(i,j)/sin(G%t(i,j))**2*( (S%F22(i,j)+S%F22(i,jp1))/G%dp(i,j)+(S%F22(i,j)+S%F22(i,jm1))/G%dp(i,jm1) ) + &
-                 dF12t*G%fp(i,j)*G%dpdp(i,j)-&
-                 dF12p*G%ft(i,j)*G%dtdt(i,j) 
-            S%II(count) = K(i,j,G%Nt)
-            S%JJ(count) = K(i,j,G%Nt)
+            S%data(count) = -G%ft(j,i)*( (S%F11(j,i)+S%F11(j,i+1))/G%dt(j,i)+(S%F11(j,i)+S%F11(j,i-1))/G%dt(j,i-1) ) - &
+                 G%fp(j,i)/sin(G%t(j,i))**2*( (S%F22(j,i)+S%F22(jp1,i))/G%dp(j,i)+(S%F22(j,i)+S%F22(jm1,i))/G%dp(jm1,i) ) + &
+                 dF12t*G%fp(j,i)*G%dpdp(j,i)-&
+                 dF12p*G%ft(j,i)*G%dtdt(j,i) 
+            S%II(count) = K(j,i,G%Np)
+            S%JJ(count) = K(j,i,G%Np)
             count=count+1
 
-            S%data(count) = G%ft(i,j)*(S%F11(i,j)+S%F11(i+1,j))/G%dt(i,j)-&
-                 dF12p*G%ft(i,j)*G%dt(i-1,j)/G%dt(i,j)
-            S%II(count)  = K(i,j,G%Nt)
-            S%JJ(count)  = K(i+1,j,G%Nt)
+            S%data(count) = G%ft(j,i)*(S%F11(j,i)+S%F11(j,i+1))/G%dt(j,i)-&
+                 dF12p*G%ft(j,i)*G%dt(j,i-1)/G%dt(j,i)
+            S%II(count)  = K(j,i,G%Np)
+            S%JJ(count)  = K(j,i+1,G%Np)
             count=count+1
 
-            S%data(count) = G%ft(i,j)*(S%F11(i,j)+S%F11(i-1,j))/G%dt(i-1,j)+&
-                 dF12p*G%ft(i,j)*G%dt(i,j)/G%dt(i-1,j)
-            S%II(count) = K(i,j,G%Nt)
-            S%JJ(count)  = K(i-1,j,G%Nt)
+            S%data(count) = G%ft(j,i)*(S%F11(j,i)+S%F11(j,i-1))/G%dt(j,i-1)+&
+                 dF12p*G%ft(j,i)*G%dt(j,i)/G%dt(j,i-1)
+            S%II(count) = K(j,i,G%Np)
+            S%JJ(count)  = K(j,i-1,G%Np)
             count=count+1
 
-            S%data(count) = G%fp(i,j)/sin(G%t(i,j))**2*(S%F22(i,j)+S%F22(i,jp1))/G%dp(i,j)+&
-                 dF12t*G%fp(i,j)*G%dp(i,jm1)/G%dp(i,j)
-            S%II(count) = K(i,j,G%Nt)
-            S%JJ(count) = K(i,jp1,G%Nt)
+            S%data(count) = G%fp(j,i)/sin(G%t(j,i))**2*(S%F22(j,i)+S%F22(jp1,i))/G%dp(j,i)+&
+                 dF12t*G%fp(j,i)*G%dp(jm1,i)/G%dp(j,i)
+            S%II(count) = K(j,i,G%Np)
+            S%JJ(count) = K(jp1,i,G%Np)
             count=count+1
 
-            S%data(count) = G%fp(i,j)/sin(G%t(i,j))**2*(S%F22(i,j)+S%F22(i,jm1))/G%dp(i,jm1)-&
-                 dF12t*G%fp(i,j)*G%dp(i,j)/G%dp(i,jm1)
-            S%II(count) = K(i,j,G%Nt)
-            S%JJ(count) = K(i,jm1,G%Nt)
+            S%data(count) = G%fp(j,i)/sin(G%t(j,i))**2*(S%F22(j,i)+S%F22(jm1,i))/G%dp(jm1,i)-&
+                 dF12t*G%fp(j,i)*G%dp(j,i)/G%dp(jm1,i)
+            S%II(count) = K(j,i,G%Np)
+            S%JJ(count) = K(jm1,i,G%Np)
             count=count+1
 
-            S%RHS(K(i,j,G%Nt)) = St%Vars(i,j,FAC)
+            S%RHS(K(j,i,G%Np)) = St%Vars(j,i,FAC)
          enddo
+      enddo
 
+      do j=1,G%Np
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!
          ! low lat boundary
          S%data(count)  = 1.0_mix_real
-         S%II(count)    = K(G%Nt,j,G%Nt)
-         S%JJ(count)    = K(G%Nt,j,G%Nt)
+         S%II(count)    = K(j,G%Nt,G%Np)
+         S%JJ(count)    = K(j,G%Nt,G%Np)
          count=count+1
 
-         S%RHS(K(G%Nt,j,G%Nt)) = LLBC(j)
+         S%RHS(K(j,G%Nt,G%Np)) = LLBC(j)
          ! end low lat boundary
          !!!!!!!!!!!!!!!!!!!!!!!!!!!!
       enddo
-      
     end subroutine set_solver_matrix_and_rhs
 
 end module mixsolver
