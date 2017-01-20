@@ -111,15 +111,25 @@ module mixsolver
             S%JJ(count) = K(jj,2,G%Np)
             count=count+1
          enddo
-         ! note, not setting RHS because it's initializaed to zero anyway
-         ! end pole boundary
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!
       enddo
+      ! note, not setting RHS because it's initializaed to zero anyway
+      ! end pole boundary
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+
+      ! inner block
       do i=2,G%Nt-1  ! excluding pole and low lat boundaries
          do j=1,G%Np
-            jm1 = merge(G%Np,j-1,j.eq.1)   ! maps j-1=0 to j-1=Np, otherwise returns j-1
-            jp1 = merge(1,j+1,j.eq.G%Np)   ! similar for j+1
+!            jm1 = merge(G%Np,j-1,j.eq.1)   ! maps j-1=0 to j-1=Np, otherwise returns j-1
+!            jp1 = merge(1,j+1,j.eq.G%Np)   ! similar for j+1
+
+            ! the above functions involve if statements, which I don't
+            ! want to pack inside inner loop. Do this instead: these
+            ! wonderful functions of my invention maps j-1=0 to Np,
+            ! otherwise j-1 maps to itself. Similarly, j+1=Np is
+            ! mapped to j+1=1, otherwise nothing's done
+            jm1 = modulo(j-1,G%Np)+G%Np*(1-int(ceiling(real(j-1)/G%Np)))  
+            jp1 = modulo(j+1,G%Np)+G%Np*(1-int(ceiling(real(modulo(j+1,G%Np))/G%Np)))
 
             ! derivatives for off diagonal conductance terms
             dF12p = G%fp(j,i)*( G%dp(jm1,i)/G%dp(j,i)*S%F12(jp1,i) + G%dpdp(j,i)*S%F12(j,i) - G%dp(j,i)/G%dp(jm1,i)*S%F12(jm1,i) )
@@ -161,18 +171,18 @@ module mixsolver
          enddo
       enddo
 
+      !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! low lat boundary
       do j=1,G%Np
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         ! low lat boundary
          S%data(count)  = 1.0_mix_real
          S%II(count)    = K(j,G%Nt,G%Np)
          S%JJ(count)    = K(j,G%Nt,G%Np)
          count=count+1
 
          S%RHS(K(j,G%Nt,G%Np)) = LLBC(j)
-         ! end low lat boundary
-         !!!!!!!!!!!!!!!!!!!!!!!!!!!!
       enddo
     end subroutine set_solver_matrix_and_rhs
+    ! end low lat boundary
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end module mixsolver
