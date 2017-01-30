@@ -23,7 +23,7 @@ module mixtypes
 
   type Solver_T
      real(mix_real), dimension(:), allocatable :: RHS,data
-     integer(kind=8),dimension(:), allocatable :: II,JJ
+     integer(kind=8),dimension(:), allocatable :: II,JJ,rowI
      real(mix_real), dimension(:,:), allocatable :: F11,F22,F12 ! (assuming F21=-F12)
      integer :: nnz  ! number of non-zeros
   end type Solver_T

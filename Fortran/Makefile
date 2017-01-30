@@ -1,7 +1,8 @@
 F90 = h5fc
 #ifort
-FFLAGS += -O3 -check bounds -traceback -Ddouble_precision -Ddss
-#-Dpardiso
+FFLAGS += -O3  -Ddouble_precision -Dpardiso_solver
+#-check bounds -traceback -fpe0
+#-Ddss_solver
 #-fast 
 #-qopenmp
 

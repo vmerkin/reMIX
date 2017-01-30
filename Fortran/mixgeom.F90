@@ -16,13 +16,14 @@ module mixgeom
       integer, dimension(2) :: dims
 
       ! set grid size
-      dims = shape(x); G%Nt = dims(1); G%Np = dims(2)
+      dims = shape(x); G%Nt = dims(2); G%Np = dims(1)
 
       allocate(G%x(G%Np,G%Nt))
       allocate(G%y(G%Np,G%Nt))
+      print *,shape(x)
 
-      G%x = transpose(x)  ! note the transposes to conform to the new definition (Np,Nt)
-      G%y = transpose(y)
+      G%x = x  ! note the transposes to conform to the new definition (Np,Nt)
+      G%y = y
     end subroutine init_grid_fromXY
 
     subroutine set_grid(G)
@@ -59,7 +60,6 @@ module mixgeom
       G%dp(1:G%Np-1,:) = G%p(2:G%Np,:)-G%p(1:G%Np-1,:)
       G%dp(G%Np,:) = modulo(G%p(1,:)-G%p(G%Np,:),2*mix_pi)      ! fix up periodic
 
-
       ! note, unlike dp and dt above that are edge-centered, the things
       ! below are vortex centered; we just don't define them on the ends
       ! (e.g., ft(1,:) where we don't need them)
@@ -67,7 +67,7 @@ module mixgeom
       G%fp(2:G%Np,:) = 1.0_mix_real/(G%dp(2:G%Np,:)+G%dp(1:G%Np-1,:)) ! note, dp(Np) defined above
       G%fp(1,:) = 1.0_mix_real/(G%dp(1,:)+G%dp(G%Np,:))  ! fix up periodic
 
-      G%dtdt(:,2:G%Nt) = G%dt(:,2:G%Nt)/G%dt(:,1:G%Nt-1)-G%dt(:,1:G%Nt-1)/G%dt(:,2:G%Nt)
+      G%dtdt(:,2:G%Nt-1) = G%dt(:,2:G%Nt-1)/G%dt(:,1:G%Nt-2)-G%dt(:,1:G%Nt-2)/G%dt(:,2:G%Nt-1)
       G%dpdp(2:G%Np,:) = G%dp(2:G%Np,:)/G%dp(1:G%Np-1,:)-G%dp(1:G%Np-1,:)/G%dp(2:G%Np,:)
       G%dpdp(1,:) = G%dp(1,:)/G%dp(G%Np,:)-G%dp(G%Np,:)/G%dp(1,:) ! fix up periodic
 

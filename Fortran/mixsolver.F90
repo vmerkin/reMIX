@@ -1,18 +1,7 @@
 ! sets up and solves the stencil matrix
-#ifdef pardiso
-  include 'mkl_pardiso.f90'
-#elif dss
-  include 'mkl_dss.f90'
-#endif
-
 module mixsolver
   use mixdefs
   use mixtypes
-#ifdef pardiso
-  use mkl_pardiso
-#elif dss
-  use mkl_dss
-#endif
 
   implicit none
 
@@ -23,6 +12,13 @@ module mixsolver
       K=(i-1)*Nj+j
     end function K
 
+    ! map 2 to -1, -2 to 1, and [-1,0,1] to themselves
+    ! wt stands for wrap tripls
+    integer function wt(q)
+      integer,intent(in) :: q
+      wt = nint(asin(sin(q*2*mix_pi/3))/asin(sin(2*mix_pi/3)))
+    end function wt
+
     subroutine init_solver(P,G,St,S)
       type(State_T), intent(in) :: St
       type(Params_T), intent(in) :: P
@@ -30,33 +26,14 @@ module mixsolver
       type(Solver_T), intent(inout) :: S
       integer :: i,j
 
-      TYPE(MKL_DSS_HANDLE) :: handle ! Allocate storage for the solver handle.
-      INTEGER :: error
-
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! INITIAL STUFF FOR SOLVER
-      ! ! Initialize the solver.
-      ! error = DSS_CREATE( handle, MKL_DSS_DEFAULTS )
-      ! if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
-
-      ! ! Define the non-zero structure of the matrix.
-      ! error = DSS_DEFINE_STRUCTURE( handle, MKL_DSS_NON_SYMMETRIC, rowIndex, nRows, &
-      !      & nCols, columns, nNonZeros )
-      ! IF (error /= MKL_DSS_SUCCESS) GOTO 999
-
-
-      ! ! Deallocate solver storage and various local arrays.
-      ! error = DSS_DELETE( handle, MKL_DSS_DEFAULTS )
-      ! if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
-      ! INITIAL STUFF FOR SOLVER
-      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
       ! this is the number of non-zeros in the matrix. Note, this
       ! depends on the stencil and boundary conditions
       S%nnz = G%Np*(G%Nt-2)*5 + G%Np + G%Np*(G%Np+1) 
 
       ! allocate RHS vector
       allocate(S%RHS(G%Nt*G%Np))
+      ! allocate row index
+      allocate(S%rowI(G%Nt*G%Np+1))
       ! Matrix 
       allocate(S%data(S%nnz))
       allocate(S%II(S%nnz))
@@ -83,9 +60,10 @@ module mixsolver
       type(Params_T), intent(in) :: P  ! passing parameters just in case. Not used.
       type(Grid_T), intent(in) :: G
       type(Solver_T), intent(inout) :: S
-      integer :: i,j,jm1,jp1,jj
-      integer(kind=8) :: count
+      integer :: i,j,jm1,jp1,jj,a1,a2,q,u
+      integer(kind=8) :: count,nextRow,nextRowI
       real(mix_real) :: dF12t,dF12p
+      real(mix_real) :: d(-2:2),c(-2:2)
       real(mix_real),dimension(:),intent(in) :: LLBC
 
       ! init to zero. This is important, since we're only filling in
@@ -96,6 +74,8 @@ module mixsolver
       S%JJ = 0.0_mix_real
       
       count=1
+      nextRowI=1
+      ! make a note about the fact that the order is corrects for the CSR format
 
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! Pole boundary 
@@ -111,11 +91,17 @@ module mixsolver
             S%JJ(count) = K(jj,2,G%Np)
             count=count+1
          enddo
+         
+         ! These are points on the pole boundary Thus, each row of the
+         ! matrix has (Np+1) entries: for the point itself + Np
+         ! entries for averaging the points at i=2 (see above).
+         ! Therefore, the rows start with indices 1, Np+2, 2Np+3, etc.
+         S%rowI(K(j,1,G%Np)) = nextRowI       !1+(j-1)*(G%Np+1)
+         nextRowI=nextRowI+G%Np+1
       enddo
       ! note, not setting RHS because it's initializaed to zero anyway
       ! end pole boundary
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
       ! inner block
       do i=2,G%Nt-1  ! excluding pole and low lat boundaries
@@ -135,38 +121,47 @@ module mixsolver
             dF12p = G%fp(j,i)*( G%dp(jm1,i)/G%dp(j,i)*S%F12(jp1,i) + G%dpdp(j,i)*S%F12(j,i) - G%dp(j,i)/G%dp(jm1,i)*S%F12(jm1,i) )
             dF12t = G%ft(j,i)*( G%dt(j,i-1)/G%dt(j,i)*S%F12(j,i+1) + G%dtdt(j,i)*S%F12(j,i) - G%dt(j,i)/G%dt(j,i-1)*S%F12(j,i-1) )
 
-            S%data(count) = -G%ft(j,i)*( (S%F11(j,i)+S%F11(j,i+1))/G%dt(j,i)+(S%F11(j,i)+S%F11(j,i-1))/G%dt(j,i-1) ) - &
+            ! for periodic boundaries jm1>jp1 maybe the case, which
+            ! breaks the order of things. So, let's figure it out
+
+            a1 = (jp1-j)/abs(jp1-j)
+            a2 = (jm1-j)/abs(jm1-j)
+            q  = nint(0.5*(a1+a2))
+            
+            d(-2) = G%ft(j,i)*(S%F11(j,i)+S%F11(j,i-1))/G%dt(j,i-1)+&
+                 dF12p*G%ft(j,i)*G%dt(j,i)/G%dt(j,i-1)
+            c(-2) = K(j,i-1,G%Np)
+
+            d(wt(-q-1)) = G%fp(j,i)/sin(G%t(j,i))**2*(S%F22(j,i)+S%F22(jm1,i))/G%dp(jm1,i)-&
+                 dF12t*G%fp(j,i)*G%dp(j,i)/G%dp(jm1,i)
+            c(wt(-q-1)) = K(jm1,i,G%Np)
+
+            d(-q) = -G%ft(j,i)*( (S%F11(j,i)+S%F11(j,i+1))/G%dt(j,i)+(S%F11(j,i)+S%F11(j,i-1))/G%dt(j,i-1) ) - &
                  G%fp(j,i)/sin(G%t(j,i))**2*( (S%F22(j,i)+S%F22(jp1,i))/G%dp(j,i)+(S%F22(j,i)+S%F22(jm1,i))/G%dp(jm1,i) ) + &
                  dF12t*G%fp(j,i)*G%dpdp(j,i)-&
                  dF12p*G%ft(j,i)*G%dtdt(j,i) 
-            S%II(count) = K(j,i,G%Np)
-            S%JJ(count) = K(j,i,G%Np)
-            count=count+1
+            c(-q) = K(j,i,G%Np)
 
-            S%data(count) = G%ft(j,i)*(S%F11(j,i)+S%F11(j,i+1))/G%dt(j,i)-&
-                 dF12p*G%ft(j,i)*G%dt(j,i-1)/G%dt(j,i)
-            S%II(count)  = K(j,i,G%Np)
-            S%JJ(count)  = K(j,i+1,G%Np)
-            count=count+1
-
-            S%data(count) = G%ft(j,i)*(S%F11(j,i)+S%F11(j,i-1))/G%dt(j,i-1)+&
-                 dF12p*G%ft(j,i)*G%dt(j,i)/G%dt(j,i-1)
-            S%II(count) = K(j,i,G%Np)
-            S%JJ(count)  = K(j,i-1,G%Np)
-            count=count+1
-
-            S%data(count) = G%fp(j,i)/sin(G%t(j,i))**2*(S%F22(j,i)+S%F22(jp1,i))/G%dp(j,i)+&
+            d(wt(-q+1)) = G%fp(j,i)/sin(G%t(j,i))**2*(S%F22(j,i)+S%F22(jp1,i))/G%dp(j,i)+&
                  dF12t*G%fp(j,i)*G%dp(jm1,i)/G%dp(j,i)
-            S%II(count) = K(j,i,G%Np)
-            S%JJ(count) = K(jp1,i,G%Np)
-            count=count+1
+            c(wt(-q+1)) = K(jp1,i,G%Np)
+            
+            d(2) = G%ft(j,i)*(S%F11(j,i)+S%F11(j,i+1))/G%dt(j,i)-&
+                 dF12p*G%ft(j,i)*G%dt(j,i-1)/G%dt(j,i)
+            c(2) = K(j,i+1,G%Np)
 
-            S%data(count) = G%fp(j,i)/sin(G%t(j,i))**2*(S%F22(j,i)+S%F22(jm1,i))/G%dp(jm1,i)-&
-                 dF12t*G%fp(j,i)*G%dp(j,i)/G%dp(jm1,i)
-            S%II(count) = K(j,i,G%Np)
-            S%JJ(count) = K(jm1,i,G%Np)
-            count=count+1
+            do u=-2,2
+               s%data(count) = d(u)
+               S%JJ(count)   = c(u)
+               S%II(count)   = K(j,i,G%Np)
+               count=count+1
+            enddo
 
+            ! At this point, coming out of the pole boundary condition, we have: S%rowI(K(j,i,G%Np)-1) = G%Np*(G%Np+1)+1
+!            S%rowI(K(j,i,G%Np)) = S%rowI(K(j,i,G%Np)-1)+G%Np+1 + 5*(K(j,i,G%Np)-1)
+!            S%rowI(K(j,i,G%Np)) = G%Np*(G%Np+1)+1 + 5*(K(j,i,G%Np)-1)
+            S%rowI(K(j,i,G%Np)) = nextRowI
+            nextRowI = nextRowI+5
             S%RHS(K(j,i,G%Np)) = St%Vars(j,i,FAC)
          enddo
       enddo
@@ -179,8 +174,11 @@ module mixsolver
          S%JJ(count)    = K(j,G%Nt,G%Np)
          count=count+1
 
+         S%rowI(K(j,G%Nt,G%Np)) = nextRowI 
+         nextRowI=nextRowI+1
          S%RHS(K(j,G%Nt,G%Np)) = LLBC(j)
       enddo
+      S%rowI(K(G%Np,G%Nt,G%Np)+1) = nextRowI   ! the dummy last element as required by the CSR storage
     end subroutine set_solver_matrix_and_rhs
     ! end low lat boundary
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!
