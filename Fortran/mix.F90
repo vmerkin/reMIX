@@ -40,6 +40,8 @@ program MIX
 !  INTEGER ::  pt(64)
   TYPE(MKL_PARDISO_HANDLE) :: pt(64) 
   INTEGER :: error
+  integer :: nrhs ! number of RHSs
+  integer :: msglvl ! verbosity level
   integer :: mtype,iparm(64)  ! pardisoinit parameters
   integer, dimension(:), allocatable :: perm
   integer :: maxfct,mnum,phase ! pardiso parameters
@@ -123,16 +125,20 @@ program MIX
 
   allocate(perm(Grid%Np*Grid%Nt))
   allocate(solution(Grid%Np*Grid%Nt))
-  iparm(1) = 0;! iparm(27)=1 !iparm(28) =0; iparm (6) =0;
+  iparm(1) = 0  ! all default parameters
+  iparm(27)= 0  ! Matrix checker
+  !iparm(28) =0; iparm (6) =0;
   maxfct = 1; mnum =1; 
+  nrhs = 1
+  msglvl = 0  ! no verbosity
   ! phase =11
-  ! call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,1,iparm,1,Solver%RHS,solution,error)
+  ! call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,nrhs,iparm,msglvl,Solver%RHS,solution,error)
   ! phase =33
-  ! call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,1,iparm,1,Solver%RHS,solution,error)
+  ! call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,nrhs,iparm,msglvl,Solver%RHS,solution,error)
   phase =13
-  call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,1,iparm,1,Solver%RHS,solution,error)
+  call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,nrhs,iparm,msglvl,Solver%RHS,solution,error)
   phase =-1  ! release
-  call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,1,iparm,0,Solver%RHS,solution,error)
+  call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,nrhs,iparm,0,Solver%RHS,solution,error)
 
   
 #endif
@@ -154,9 +160,9 @@ program MIX
   ! write(u, *) Solver%rowI
   ! close(u)
 
-  ! open(newunit=u, file="solution.dat", status="replace")  
-  ! write(u, *) solution
-  ! close(u)
+  open(newunit=u, file="solution.dat", status="replace")  
+  write(u, *) solution
+  close(u)
 
   call h5close_f(herror)  ! Close H5 Fortran interface
 end program MIX

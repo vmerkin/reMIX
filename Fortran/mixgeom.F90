@@ -67,6 +67,8 @@ module mixgeom
       G%fp(2:G%Np,:) = 1.0_mix_real/(G%dp(2:G%Np,:)+G%dp(1:G%Np-1,:)) ! note, dp(Np) defined above
       G%fp(1,:) = 1.0_mix_real/(G%dp(1,:)+G%dp(G%Np,:))  ! fix up periodic
 
+      ! this should work but since we don't use the last element (G%Nt) let's use the next line instead to avoid possibly dividing by zero (G%dt(:,2:G%Nt))
+!      G%dtdt(:,2:G%Nt) = G%dt(:,2:G%Nt)/G%dt(:,1:G%Nt-1)-G%dt(:,1:G%Nt-1)/G%dt(:,2:G%Nt)
       G%dtdt(:,2:G%Nt-1) = G%dt(:,2:G%Nt-1)/G%dt(:,1:G%Nt-2)-G%dt(:,1:G%Nt-2)/G%dt(:,2:G%Nt-1)
       G%dpdp(2:G%Np,:) = G%dp(2:G%Np,:)/G%dp(1:G%Np-1,:)-G%dp(1:G%Np-1,:)/G%dp(2:G%Np,:)
       G%dpdp(1,:) = G%dp(1,:)/G%dp(G%Np,:)-G%dp(G%Np,:)/G%dp(1,:) ! fix up periodic
