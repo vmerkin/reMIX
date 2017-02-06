@@ -20,7 +20,6 @@ module mixgeom
 
       allocate(G%x(G%Np,G%Nt))
       allocate(G%y(G%Np,G%Nt))
-      print *,shape(x)
 
       G%x = x  ! note the transposes to conform to the new definition (Np,Nt)
       G%y = y

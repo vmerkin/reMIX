@@ -1,6 +1,7 @@
 F90 = h5fc
 #ifort
-FFLAGS += -O3  -Ddouble_precision -Dmgmres_solver
+FFLAGS += -O3  -Ddouble_precision -Dmgmres_solver 
+#-DNO2003_HDF5
 
 #### CHOICE OF SOLVER
 #-Dpardiso_solver
@@ -10,11 +11,14 @@ FFLAGS += -O3  -Ddouble_precision -Dmgmres_solver
 #-check bounds -traceback -fpe0
 
 #### OTHER OPTIONS
+# NO2003_HDF5 - HDF5 lib compiled without fortran 2003 support
 #-fast 
 #-qopenmp
 
-INCLUDES = -I$(MKLROOT)/include 
-LIBS = -L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
+INCLUDES = 
+#-I$(MKLROOT)/include 
+LIBS = 
+#-L$(MKLROOT)/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core
 
 FFLAGS += $(INCLUDES) $(LIBS)
 

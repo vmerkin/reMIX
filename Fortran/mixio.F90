@@ -17,16 +17,23 @@ module mixio
       integer, dimension(6), intent(out) :: simtime
       
       integer(HID_T) :: h5fId,attrId
-
+#ifdef NO2003_HDF5
+      integer(HSIZE_T), dimension(1) :: dims
+#else
       TYPE(C_PTR) :: f_ptr
+#endif
 
       call checkFile(fname)
       !Open file
       call h5fopen_f(fname, H5F_ACC_RDONLY_F, h5fId, herror)
 
       call h5aopen_f(h5fId,"SimTime",attrId,herror)
+#ifdef NO2003_HDF5
+      call h5aread_f(attrId,H5T_NATIVE_INTEGER,simtime,dims,herror)
+#else
       f_ptr = C_LOC(simtime)
       call h5aread_f(attrId,H5T_NATIVE_INTEGER,f_ptr,herror)
+#endif
       
       call h5aclose_f(attrId,herror)
       call h5fclose_f(h5fId, herror)
@@ -39,7 +46,9 @@ module mixio
       integer(HID_T) :: h5fId,dsId,dspaceId
       integer(HSIZE_T), dimension(2) :: dims,maxdims
 
+#ifndef NO2003_HDF5
       TYPE(C_PTR) :: f_ptr
+#endif
 
       real, dimension(:,:), allocatable :: var
 !      real, dimension(27,180) :: var
@@ -56,8 +65,12 @@ module mixio
          allocate(var(1:dims(1),1:dims(2)))
       end if
 
+#ifdef NO2003_HDF5
+      call h5dread_f(dsId,H5T_NATIVE_REAL,var,dims,herror)
+#else
       f_ptr = C_LOC(var)
       call h5dread_f(dsId,H5T_NATIVE_REAL,f_ptr,herror)
+#endif
       
       call h5dclose_f(dsId,herror)
       call h5fclose_f(h5fId, herror)
