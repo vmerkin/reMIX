@@ -1,8 +1,15 @@
 F90 = h5fc
 #ifort
-FFLAGS += -O3  -Ddouble_precision -Dpardiso_solver
+FFLAGS += -O3  -Ddouble_precision -Dmgmres_solver
+
+#### CHOICE OF SOLVER
+#-Dpardiso_solver
+#-Dmgmres_solver
+
+#### DEBUG
 #-check bounds -traceback -fpe0
-#-Ddss_solver
+
+#### OTHER OPTIONS
 #-fast 
 #-qopenmp
 
@@ -26,7 +33,8 @@ objects = mixdefs.o\
 	mixtypes.o\
 	mixgeom.o\
 	mixsolver.o\
-	mix.o
+	mix.o\
+	mgmres.o
 
 $(EXE): $(objects)
 	$(F90) $(FFLAGS) $(LDFLAGS)  -o $(EXE) $(objects) 

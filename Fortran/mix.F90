@@ -1,7 +1,5 @@
 #ifdef pardiso_solver
   include 'mkl_pardiso.f90'
-#elif dss_solver
-  include 'mkl_dss.f90'
 #endif
 program MIX
   use mixdefs
@@ -11,8 +9,6 @@ program MIX
   use mixsolver
 #ifdef pardiso_solver
   use mkl_pardiso
-#elif dss_solver
-  use mkl_dss
 #endif
   
   implicit none
@@ -31,12 +27,7 @@ program MIX
   real(mix_real),dimension(:),allocatable :: LLBC ! low latitude boundary condition
   real(mix_real),dimension(:),allocatable :: solution
 
-#ifdef dss_solver
-  TYPE(MKL_DSS_HANDLE) :: handle ! Allocate storage for the solver handle.
-  INTEGER :: error
-!  integer, dimension(:), allocatable :: perm
-  INTEGER perm(1)
-#elif pardiso_solver
+#ifdef pardiso_solver
 !  INTEGER ::  pt(64)
   TYPE(MKL_PARDISO_HANDLE) :: pt(64) 
   INTEGER :: error
@@ -45,7 +36,9 @@ program MIX
   integer :: mtype,iparm(64)  ! pardisoinit parameters
   integer, dimension(:), allocatable :: perm
   integer :: maxfct,mnum,phase ! pardiso parameters
-
+#elif mgmres_solver
+  integer :: maxitr
+  integer :: mr
 #endif
 
 
@@ -54,8 +47,8 @@ program MIX
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call h5open_f(herror) !Setup H5 Fortran interface
 
-!  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
-  fname = '../data/interp.h5'
+  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
+!  fname = '../data/interp.h5'
 
   ! FIXME: pack everything into one 3D array eventually; also define grid class
   call getUT(fname,simtime)
@@ -96,28 +89,7 @@ program MIX
   call set_solver_matrix_and_rhs(Params,Grid,State,Solver,LLBC)
 
 
-#ifdef dss_solver
-  ! INITIAL STUFF FOR SOLVER
-  ! Initialize the solver.
-  error = DSS_CREATE( handle, MKL_DSS_DEFAULTS )
-  if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
-
-  ! Define the non-zero structure of the matrix.
-   error = DSS_DEFINE_STRUCTURE( handle, MKL_DSS_NON_SYMMETRIC,int(Solver%rowI),int(Grid%Np*Grid%Nt), &
-        int(Grid%Np*Grid%Nt),int(Solver%JJ),int(Solver%nnz))
-  if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
-
-  ! Reorder the matrix.
-  !  allocate(perm(Grid%Np*Grid%Nt))
-  perm(1) = 0
-  error = DSS_REORDER( handle, MKL_DSS_AUTO_ORDER, perm )
-  if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
-
-  ! Deallocate solver storage and various local arrays.
-  error = DSS_DELETE( handle, MKL_DSS_DEFAULTS )
-  if (error /=MKL_DSS_SUCCESS) WRITE(*,*) "Solver returned error code ", error
-  ! INITIAL STUFF FOR SOLVER
-#elif pardiso_solver
+#ifdef pardiso_solver
   ! see description of parameters here: https://software.intel.com/en-us/node/470284#E44B4021-701A-48DA-BA29-70CFA20766AA
   mtype = 11 ! real nonsymmetric matrix
 
@@ -140,7 +112,14 @@ program MIX
   phase =-1  ! release
   call pardiso(pt,maxfct,mnum,mtype,phase,int(Grid%Np*Grid%Nt),Solver%data,int(Solver%rowI),int(Solver%JJ),perm,nrhs,iparm,0,Solver%RHS,solution,error)
 
-  
+#elif mgmres_solver  
+  allocate(solution(Grid%Np*Grid%Nt))
+  solution = 0.0_mix_real
+  maxitr = 400
+  mr = 30
+!  call mgmres_st ( int(Grid%Np*Grid%Nt),int(Solver%nnz),int(Solver%II),int(Solver%JJ),Solver%data,solution,Solver%RHS,maxitr,mr,1.0D-3,1.0D-3)
+  call pmgmres_ilu_cr ( int(Grid%Np*Grid%Nt),int(Solver%nnz),int(Solver%rowI),int(Solver%JJ),Solver%data,solution,Solver%RHS,maxitr,mr,1.0D-8,1.0D-8)
+
 #endif
 
   ! open(newunit=u, file="data.dat", status="replace")
