@@ -82,9 +82,9 @@ if __name__ == "__main__":
     # the numpy version 1. That has more flexibility as it allows
     # solving the same matrix with a different RHS.
 
-#    s.setStencilMatrixNp()  # 1. this is numpy - way faster. 
-#    s.setRHSNp(jr)
-    s.setStencilMatrixAndRHS(jr)   # 2. This is fortran-ready (explicit loops). 
+    s.setStencilMatrixNp()  # 1. this is numpy - way faster. 
+    s.setRHSNp(jr)
+#    s.setStencilMatrixAndRHS(jr)   # 2. This is fortran-ready (explicit loops). 
 
 
     print('Time spend constructing matrix (s):',time.clock()-t0)
@@ -105,6 +105,9 @@ if __name__ == "__main__":
     lines, labels = rgrids(circles,lbls)
     ylim(0,50.*pi/180.)
     contourf(grd.p+pi/2,grd.t,pot.reshape(Nt,Np),51)
+    # use this to compare with the old mix solution (doesn't work if interpolated)
+    if not interp:
+        #    contourf(grd.p+pi/2,grd.t,pot.reshape(Nt,Np)-psi_n[:-1,:].T,51)
     colorbar().set_label('Potential, kV')
 
     figure() 
@@ -116,5 +119,16 @@ if __name__ == "__main__":
     contourf(grd.p+pi/2,grd.t,jr,45)
     colorbar().set_label('Current, microA/m^2')
     contour(grd.p+pi/2,grd.t,pot.reshape(Nt,Np),13,colors='black')
+
+    if not interp:
+        figure() 
+        subplot(111,polar=True)
+        circles = linspace(10,40,4)*pi/180.
+        lbls = [str(elem)+u'\xb0' for elem in [10,20,30,40]] 
+        lines, labels = rgrids(circles,lbls)
+        ylim(0,50.*pi/180.)
+        contourf(grd.p+pi/2,grd.t,jr,45)
+        colorbar().set_label('Current, microA/m^2')
+        contour(grd.p+pi/2,grd.t,psi_n[:-1,:].T,13,colors='black')
     
 
