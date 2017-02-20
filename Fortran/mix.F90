@@ -6,6 +6,7 @@ program MIX
   use mixio
   use mixtypes
   use mixgeom
+  use mixstate
   use mixsolver
 #ifdef pardiso_solver
   use mkl_pardiso
@@ -50,19 +51,17 @@ program MIX
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call h5open_f(herror) !Setup H5 Fortran interface
 
-!  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
-  fname = '../data/interp.h5'
+  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
+!  fname = '../data/interp.h5'
 
   ! FIXME: pack everything into one 3D array eventually; also define grid class
   call getUT(fname,simtime)
-  call getVar(fname,"Grid X",x_in)
-  call getVar(fname,"Grid Y",y_in)
-  call getVar(fname,"Potential North [kV]",pot_in)
-  call getVar(fname,"FAC North [microAm2]",j_in)
-  call getVar(fname,"Pedersen conductance North [S]",sigmap_in)
-  call getVar(fname,"Hall conductance North [S]",sigmah_in)
-  ! note, things are stored in the H5 file as (Nt,Np),
-  ! while we want (Np,Nt); Note this for later.
+  call readVar(fname,"Grid X",x_in)
+  call readVar(fname,"Grid Y",y_in)
+  call readVar(fname,"Potential North [kV]",pot_in)
+  call readVar(fname,"FAC North [microAm2]",j_in)
+  call readVar(fname,"Pedersen conductance North [S]",sigmap_in)
+  call readVar(fname,"Hall conductance North [S]",sigmah_in)
   dims = shape(x_in); Nt = dims(2); Np = dims(1)
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -71,17 +70,14 @@ program MIX
   call init_grid_fromXY(Grid,real(x_in,mix_real),real(y_in,mix_real))
   call set_grid(Grid)
 
-  ! FIXME: pack these into a module, like we did for grid above in mixgeom
-  ! set up variable state
-  allocate(State%Vars(Grid%Np,Grid%Nt,nVars))
-  State%Vars(:,:,POT) = pot_in
-  State%Vars(:,:,FAC) = j_in
-  State%Vars(:,:,SIGMAP) = sigmap_in
-  State%Vars(:,:,SIGMAH) = sigmah_in
+  call init_state(Grid,State,real(pot_in,mix_real),&
+       real(j_in,mix_real),&
+       real(sigmap_in,mix_real),&
+       real(sigmah_in,mix_real))
 
   ! ok, done with the setup of the main data structures.
   ! now can do the solve
-  call init_solver(Params,Grid,State,Solver)
+  call init_solver(Params,Grid,Solver)
 
   ! FIXME: low latitude boundary condition
   allocate(LLBC(Grid%Np))
@@ -151,5 +147,7 @@ program MIX
   write(u, *) solution
   close(u)
 
+  call writeState('mixtest.h5',State)
+  call writeGrid('mixtest.h5',Grid)  ! assumes that the file has been created by writeState
   call h5close_f(herror)  ! Close H5 Fortran interface
 end program MIX

@@ -22,4 +22,13 @@ module mixdefs
   enum, bind(C)
      enumerator :: POT=1,FAC,SIGMAP,SIGMAH
   end enum
+
+  enum, bind(C)
+     enumerator :: NORTH=1,SOUTH
+  end enum
+
+  character(len=*), parameter :: pot_label = 'Potential'
+  character(len=*), parameter :: fac_label = 'Field-aligned current'
+  character(len=*), parameter :: sigmap_label = 'Pedersen conductance'
+  character(len=*), parameter :: sigmah_label = 'Hall conductance'
 end module mixdefs
