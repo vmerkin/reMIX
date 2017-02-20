@@ -14,7 +14,7 @@ module mixio
     ! get UT: int array (Year, Month, Day, Hr, Min, Sec)
     subroutine getUT(fname,simtime)
       character(len=*),intent(in) :: fname
-      integer, dimension(6), intent(out) :: simtime
+      integer, dimension(6), target, intent(out) :: simtime
       
       integer(HID_T) :: h5fId,attrId
 #ifdef NO2003_HDF5
@@ -50,7 +50,7 @@ module mixio
       TYPE(C_PTR) :: f_ptr
 #endif
 
-      real, dimension(:,:), allocatable :: var
+      real, dimension(:,:), target, allocatable :: var
 !      real, dimension(27,180) :: var
 
       call checkFile(fname)
