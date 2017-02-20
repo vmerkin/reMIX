@@ -3,6 +3,7 @@
 module mixio
   use hdf5
   use mixdefs  
+  use mixtypes
 
   implicit none
 
@@ -39,7 +40,7 @@ module mixio
       call h5fclose_f(h5fId, herror)
     end subroutine getUT
 
-    subroutine getVar(fname,varname,var)
+    subroutine readVar(fname,varname,var)
       character(len=*),intent(in) :: fname
       character(len=*),intent(in) :: varname
       
@@ -51,7 +52,6 @@ module mixio
 #endif
 
       real, dimension(:,:), target, allocatable :: var
-!      real, dimension(27,180) :: var
 
       call checkFile(fname)
       !Open file
@@ -74,9 +74,68 @@ module mixio
       
       call h5dclose_f(dsId,herror)
       call h5fclose_f(h5fId, herror)
-    end subroutine getVar
+    end subroutine readVar
 
-    
+    subroutine writeState(fname,St)
+      character(len=*),intent(in) :: fname
+      type(State_T), intent(in) :: St
+      integer(HID_T) :: h5fId
+      integer :: v
+
+      call h5fcreate_f(fname,H5F_ACC_EXCL_F, h5fId, herror) 
+      call h5fopen_f(fname,H5F_ACC_RDWR_F, h5fId, herror)
+      
+      do v=1,nVars
+         select case (v)
+            case (POT)
+               call writeVar(h5fId,St%Vars(:,:,v),pot_label)
+            case (FAC)
+               call writeVar(h5fId,St%Vars(:,:,v),fac_label)
+            case (SIGMAP)
+               call writeVar(h5fId,St%Vars(:,:,v),sigmap_label)
+            case (SIGMAH)
+               call writeVar(h5fId,St%Vars(:,:,v),sigmah_label)
+         end select
+      enddo
+
+      call h5fclose_f(h5fId, herror)
+    end subroutine writeState
+
+    subroutine writeGrid(fname,G)
+      character(len=*),intent(in) :: fname
+      type(Grid_T), intent(in) :: G
+      integer(HID_T) :: h5fId
+
+      call h5fopen_f(fname,H5F_ACC_RDWR_F, h5fId, herror)
+      call writeVar(h5fId,G%x,'X')
+      call writeVar(h5fId,G%y,'Y')
+      call h5fclose_f(h5fId, herror)
+    end subroutine writeGrid
+
+    subroutine writeVar(fId,var,varName)
+      integer(HID_T), intent(in) :: fId
+      real(mix_real), dimension(:,:), intent(in) :: var
+      character(len=*),intent(in) :: varName
+      
+      integer(HID_T) :: dsId,dspaceId
+      integer(HSIZE_T), dimension(2) :: dims,maxdims
+      integer :: rank
+      
+      rank = 2
+      dims = shape(var)
+      ! create data space
+      call h5screate_simple_f(rank, dims,dspaceId,herror)
+
+      !Create data set and write data
+      call h5dcreate_f(fId,varName,H5T_NATIVE_REAL, dspaceId,dsId, herror)
+      ! note type conversion to io_real (single, typically)
+      call h5dwrite_f(dsId, H5T_NATIVE_REAL,real(var,mix_io_real),dims, herror)
+
+      !Close up shop
+      call h5dclose_f(dsId,herror)
+      call h5sclose_f(dspaceId,herror)
+    end subroutine writeVar
+
     ! check H5 file existence
     subroutine checkFile(fname)
       character(len=*),intent(in) :: fname
@@ -88,5 +147,5 @@ module mixio
          stop
       endif
     end subroutine checkFile
-      
+
 end module mixio
