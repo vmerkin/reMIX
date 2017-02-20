@@ -41,14 +41,17 @@ program MIX
   integer :: mr
 #endif
 
+  ! timing 
+  real :: start_time, finish_time
+
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! TEMPORARY IO STUFF
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call h5open_f(herror) !Setup H5 Fortran interface
 
-  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
-!  fname = '../data/interp.h5'
+!  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
+  fname = '../data/interp.h5'
 
   ! FIXME: pack everything into one 3D array eventually; also define grid class
   call getUT(fname,simtime)
@@ -86,7 +89,10 @@ program MIX
 
   ! MAIN LOOP WILL START HERE
   call set_solver_terms(Params,Grid,State,Solver)
+  call cpu_time(start_time)
   call set_solver_matrix_and_rhs(Params,Grid,State,Solver,LLBC)
+  call cpu_time(finish_time)
+  print '("Time in matrix = ",f6.3," seconds.")',finish_time-start_time
 
 
 #ifdef pardiso_solver
@@ -118,8 +124,10 @@ program MIX
   maxitr = 400
   mr = 30
 !  call mgmres_st ( int(Grid%Np*Grid%Nt),int(Solver%nnz),int(Solver%II),int(Solver%JJ),Solver%data,solution,Solver%RHS,maxitr,mr,1.0D-3,1.0D-3)
+  call cpu_time(start_time)
   call pmgmres_ilu_cr ( int(Grid%Np*Grid%Nt),int(Solver%nnz),int(Solver%rowI),int(Solver%JJ),Solver%data,solution,Solver%RHS,maxitr,mr,1.0D-8,1.0D-8)
-
+  call cpu_time(finish_time)
+  print '("Time in solve = ",f6.3," seconds.")',finish_time-start_time
 #endif
 
   ! open(newunit=u, file="data.dat", status="replace")
