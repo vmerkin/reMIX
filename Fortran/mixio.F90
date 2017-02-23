@@ -88,13 +88,13 @@ module mixio
       do v=1,nVars
          select case (v)
             case (POT)
-               call writeVar(h5fId,St%Vars(:,:,v),pot_label)
+               call writeVar(h5fId,St%Vars(:,:,v),"Potential","kV")
             case (FAC)
-               call writeVar(h5fId,St%Vars(:,:,v),fac_label)
+               call writeVar(h5fId,St%Vars(:,:,v),"Field-aligned current","muA/m**2")
             case (SIGMAP)
-               call writeVar(h5fId,St%Vars(:,:,v),sigmap_label)
+               call writeVar(h5fId,St%Vars(:,:,v),"Pedersen conductance","S")
             case (SIGMAH)
-               call writeVar(h5fId,St%Vars(:,:,v),sigmah_label)
+               call writeVar(h5fId,St%Vars(:,:,v),"Hall conductance","S")
          end select
       enddo
 
@@ -107,27 +107,37 @@ module mixio
       integer(HID_T) :: h5fId
 
       call h5fopen_f(fname,H5F_ACC_RDWR_F, h5fId, herror)
-      call writeVar(h5fId,G%x,'X')
-      call writeVar(h5fId,G%y,'Y')
+      call writeVar(h5fId,G%x,'X',"Ri")
+      call writeVar(h5fId,G%y,'Y',"Ri")
       call h5fclose_f(h5fId, herror)
     end subroutine writeGrid
 
-    subroutine writeVar(fId,var,varName)
+    subroutine writeVar(fId,var,varName,units)
       integer(HID_T), intent(in) :: fId
       real(mix_real), dimension(:,:), intent(in) :: var
       character(len=*),intent(in) :: varName
+      character(len=*),intent(in) :: units
       
-      integer(HID_T) :: dsId,dspaceId
-      integer(HSIZE_T), dimension(2) :: dims,maxdims
-      integer :: rank
+      integer(HID_T) :: dsId,dspaceId,aspaceId,attrId,atypeId
+      integer(HSIZE_T), dimension(2) :: dims
+      integer(HSIZE_T), dimension(1) :: adims = [1]
+      integer(SIZE_T) :: attrlen=100
+      integer :: rank = 2, arank = 1
       
-      rank = 2
       dims = shape(var)
       ! create data space
       call h5screate_simple_f(rank, dims,dspaceId,herror)
-
       !Create data set and write data
       call h5dcreate_f(fId,varName,H5T_NATIVE_REAL, dspaceId,dsId, herror)
+
+      ! data set attributes
+      call h5screate_simple_f(arank, adims, aspaceId,herror)
+      call h5tcopy_f(H5T_NATIVE_CHARACTER, atypeId, herror)
+      call h5tset_size_f(atypeId,attrlen, herror)
+      call h5acreate_f (dsId,"Units",atypeId,aspaceId,attrId,herror)
+      call h5awrite_f (attrId,atypeId,trim(units),adims,herror) 
+      call h5aclose_f (attrId,herror)
+
       ! note type conversion to io_real (single, typically)
       call h5dwrite_f(dsId, H5T_NATIVE_REAL,real(var,mix_io_real),dims, herror)
 
