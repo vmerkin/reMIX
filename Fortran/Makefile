@@ -1,6 +1,6 @@
-F90 = h5fc
+F90 = /Users/merkivg1/Downloads/hdf5-1.10.0-patch1/hdf5/bin/h5fc
 #ifort
-FFLAGS += -O3  -Ddouble_precision -Dmgmres_solver 
+FFLAGS += -O3 -ffree-line-length-none  -Ddouble_precision -Dmgmres_solver
 #-DNO2003_HDF5
 
 #### CHOICE OF SOLVER
@@ -33,9 +33,10 @@ FFLAGS += $(INCLUDES) $(LIBS)
 EXE = mix
 
 objects = mixdefs.o\
-	mixio.o\
 	mixtypes.o\
+	mixio.o\
 	mixgeom.o\
+	mixstate.o\
 	mixsolver.o\
 	mix.o\
 	mgmres.o
