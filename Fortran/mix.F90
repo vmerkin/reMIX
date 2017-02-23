@@ -51,8 +51,8 @@ program MIX
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call h5open_f(herror) !Setup H5 Fortran interface
 
-  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
-!  fname = '../data/interp.h5'
+!  fname = "../data/Aug2010_mix_2010-08-04T00-00-00Z.h5"
+  fname = '../data/interp.h5'
 
   ! FIXME: pack everything into one 3D array eventually; also define grid class
   call getUT(fname,simtime)
@@ -81,7 +81,7 @@ program MIX
 
   ! FIXME: low latitude boundary condition
   allocate(LLBC(Grid%Np))
-  LLBC = 0.0_mix_real
+  LLBC = 0.0D0
 
   ! MAIN LOOP WILL START HERE
   call set_solver_terms(Params,Grid,State,Solver)
@@ -116,7 +116,7 @@ program MIX
 
 #elif mgmres_solver  
   allocate(solution(Grid%Np*Grid%Nt))
-  solution = 0.0_mix_real
+  solution = 0.0D0
   maxitr = 400
   mr = 30
 !  call mgmres_st ( int(Grid%Np*Grid%Nt),int(Solver%nnz),int(Solver%II),int(Solver%JJ),Solver%data,solution,Solver%RHS,maxitr,mr,1.0D-3,1.0D-3)
@@ -147,6 +147,7 @@ program MIX
   write(u, *) solution
   close(u)
 
+  State%Vars(:,:,POT) = reshape(solution,[Grid%Np,Grid%Nt])*Ri**2*1.e3 ! in kV
   call writeState('mixtest.h5',State)
   call writeGrid('mixtest.h5',Grid)  ! assumes that the file has been created by writeState
   call h5close_f(herror)  ! Close H5 Fortran interface

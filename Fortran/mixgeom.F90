@@ -62,9 +62,9 @@ module mixgeom
       ! note, unlike dp and dt above that are edge-centered, the things
       ! below are vortex centered; we just don't define them on the ends
       ! (e.g., ft(1,:) where we don't need them)
-      G%ft(:,2:G%Nt) = 1.0_mix_real/(G%dt(:,2:G%Nt)+G%dt(:,1:G%Nt-1))/sin(G%t(:,2:G%Nt))
-      G%fp(2:G%Np,:) = 1.0_mix_real/(G%dp(2:G%Np,:)+G%dp(1:G%Np-1,:)) ! note, dp(Np) defined above
-      G%fp(1,:) = 1.0_mix_real/(G%dp(1,:)+G%dp(G%Np,:))  ! fix up periodic
+      G%ft(:,2:G%Nt) = 1.0D0/(G%dt(:,2:G%Nt)+G%dt(:,1:G%Nt-1))/sin(G%t(:,2:G%Nt))
+      G%fp(2:G%Np,:) = 1.0D0/(G%dp(2:G%Np,:)+G%dp(1:G%Np-1,:)) ! note, dp(Np) defined above
+      G%fp(1,:) = 1.0D0/(G%dp(1,:)+G%dp(G%Np,:))  ! fix up periodic
 
       ! this should work but since we don't use the last element (G%Nt) let's use the next line instead to avoid possibly dividing by zero (G%dt(:,2:G%Nt))
 !      G%dtdt(:,2:G%Nt) = G%dt(:,2:G%Nt)/G%dt(:,1:G%Nt-1)-G%dt(:,1:G%Nt-1)/G%dt(:,2:G%Nt)
