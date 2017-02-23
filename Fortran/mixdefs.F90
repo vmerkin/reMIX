@@ -27,8 +27,5 @@ module mixdefs
      enumerator :: NORTH=1,SOUTH
   end enum
 
-  character(len=*), parameter :: pot_label = 'Potential'
-  character(len=*), parameter :: fac_label = 'Field-aligned current'
-  character(len=*), parameter :: sigmap_label = 'Pedersen conductance'
-  character(len=*), parameter :: sigmah_label = 'Hall conductance'
+  real(mix_real), parameter :: Ri = 6.5D0   ! Ionosphere radius in 1000 km
 end module mixdefs
