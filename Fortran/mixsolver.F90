@@ -19,8 +19,7 @@ module mixsolver
       wt = nint(asin(sin(q*2*mix_pi/3))/asin(sin(2*mix_pi/3)))
     end function wt
 
-    subroutine init_solver(P,G,St,S)
-      type(State_T), intent(in) :: St
+    subroutine init_solver(P,G,S)
       type(Params_T), intent(in) :: P
       type(Grid_T), intent(in) :: G
       type(Solver_T), intent(inout) :: S
@@ -68,10 +67,10 @@ module mixsolver
 
       ! init to zero. This is important, since we're only filling in
       ! non-zero elements in the matrix construction
-      S%RHS = 0.0_mix_real   
-      S%data=0.0_mix_real
-      S%II = 0.0_mix_real
-      S%JJ = 0.0_mix_real
+      S%RHS = 0.0D0   
+      S%data=0.0D0
+      S%II = 0.0D0
+      S%JJ = 0.0D0
       
       count=1
       nextRowI=1
@@ -80,7 +79,7 @@ module mixsolver
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! Pole boundary 
       do j=1,G%Np
-         S%data(count) = 1.0_mix_real
+         S%data(count) = 1.0D0
          S%II(count)   = K(j,1,G%Np)
          S%JJ(count)   = K(j,1,G%Np)
          count=count+1
@@ -106,16 +105,16 @@ module mixsolver
       ! inner block
       do i=2,G%Nt-1  ! excluding pole and low lat boundaries
          do j=1,G%Np
-!            jm1 = merge(G%Np,j-1,j.eq.1)   ! maps j-1=0 to j-1=Np, otherwise returns j-1
-!            jp1 = merge(1,j+1,j.eq.G%Np)   ! similar for j+1
+            jm1 = merge(G%Np,j-1,j.eq.1)   ! maps j-1=0 to j-1=Np, otherwise returns j-1
+            jp1 = merge(1,j+1,j.eq.G%Np)   ! similar for j+1
 
             ! the above functions involve if statements, which I don't
             ! want to pack inside inner loop. Do this instead: these
             ! wonderful functions of my invention maps j-1=0 to Np,
             ! otherwise j-1 maps to itself. Similarly, j+1=Np is
             ! mapped to j+1=1, otherwise nothing's done
-            jm1 = modulo(j-1,G%Np)+G%Np*(1-int(ceiling(real(j-1)/G%Np)))  
-            jp1 = modulo(j+1,G%Np)+G%Np*(1-int(ceiling(real(modulo(j+1,G%Np))/G%Np)))
+!            jm1 = modulo(j-1,G%Np)+G%Np*(1-int(ceiling(real(j-1)/G%Np)))  
+!            jp1 = modulo(j+1,G%Np)+G%Np*(1-int(ceiling(real(modulo(j+1,G%Np))/G%Np)))
 
             ! derivatives for off diagonal conductance terms
             dF12p = G%fp(j,i)*( G%dp(jm1,i)/G%dp(j,i)*S%F12(jp1,i) + G%dpdp(j,i)*S%F12(j,i) - G%dp(j,i)/G%dp(jm1,i)*S%F12(jm1,i) )
@@ -169,7 +168,7 @@ module mixsolver
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ! low lat boundary
       do j=1,G%Np
-         S%data(count)  = 1.0_mix_real
+         S%data(count)  = 1.0D0
          S%II(count)    = K(j,G%Nt,G%Np)
          S%JJ(count)    = K(j,G%Nt,G%Np)
          count=count+1
